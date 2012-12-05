@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<classpath>
+	<classpathentry kind="src" path="src"/>
+	<classpathentry kind="src" path="client"/>
+	<classpathentry kind="src" path="res"/>
+	<classpathentry kind="src" output="test-classes" path="test"/>
+	<classpathentry kind="con" path="com.google.appengine.eclipse.core.GAE_CONTAINER"/>
+	<classpathentry kind="lib" path="/home/donniet/eclipse/plugins/com.google.gwt.eclipse.sdkbundle_2.5.0.v201211121240-rel-r42/gwt-2.5.0/validation-api-1.0.0.GA.jar" sourcepath="/home/donniet/eclipse/plugins/com.google.gwt.eclipse.sdkbundle_2.5.0.v201211121240-rel-r42/gwt-2.5.0/validation-api-1.0.0.GA-sources.jar"/>
+	<classpathentry kind="lib" path="/home/donniet/eclipse/plugins/com.google.gwt.eclipse.sdkbundle_2.5.0.v201211121240-rel-r42/gwt-2.5.0/validation-api-1.0.0.GA-sources.jar"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
+	<classpathentry kind="lib" path="war/WEB-INF/lib/commons-beanutils-1.8.2.jar"/>
+	<classpathentry kind="lib" path="war/WEB-INF/lib/commons-codec-1.6.jar"/>
+	<classpathentry kind="lib" path="war/WEB-INF/lib/commons-digester-1.8.1.jar"/>
+	<classpathentry kind="lib" path="war/WEB-INF/lib/commons-jexl-1.1.jar"/>
+	<classpathentry kind="lib" path="war/WEB-INF/lib/commons-logging-1.1.1.jar"/>
+	<classpathentry kind="lib" path="war/WEB-INF/lib/commons-scxml-0.9.jar" sourcepath="/scxml/commons-scxml-0.9-src/src/main/java"/>
+	<classpathentry kind="lib" path="war/WEB-INF/lib/js.jar"/>
+	<classpathentry kind="lib" path="war/WEB-INF/lib/serializer.jar"/>
+	<classpathentry kind="lib" path="war/WEB-INF/lib/xalan.jar"/>
+	<classpathentry kind="lib" path="war/WEB-INF/lib/flexjson-2.1.jar"/>
+	<classpathentry kind="output" path="war/WEB-INF/classes"/>
+</classpath>

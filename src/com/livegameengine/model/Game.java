@@ -1,0 +1,1022 @@
+package com.livegameengine.model;
+
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.UnsupportedEncodingException;
+import java.io.Writer;
+import java.math.BigInteger;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Queue;
+import java.util.Set;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.apache.commons.scxml.ErrorReporter;
+import org.apache.commons.scxml.EventDispatcher;
+import org.apache.commons.scxml.SCXMLExecutor;
+import org.apache.commons.scxml.SCXMLListener;
+import org.apache.commons.scxml.Status;
+import org.apache.commons.scxml.TriggerEvent;
+import org.apache.commons.scxml.io.SCXMLParser;
+import org.apache.commons.scxml.model.CustomAction;
+import org.apache.commons.scxml.model.Datamodel;
+import org.apache.commons.scxml.model.ModelException;
+import org.apache.commons.scxml.model.SCXML;
+import org.apache.commons.scxml.model.State;
+import org.apache.commons.scxml.model.Transition;
+import org.apache.commons.scxml.model.TransitionTarget;
+import com.livegameengine.config.Config;
+import com.livegameengine.error.GameLoadException;
+import com.livegameengine.persist.PMF;
+import com.livegameengine.persist.PersistenceCommand;
+import com.livegameengine.persist.PersistenceCommandException;
+import com.livegameengine.scxml.js.JsContext;
+import com.livegameengine.scxml.js.JsEvaluator;
+import com.livegameengine.scxml.js.JsFunctionJsonTransformer;
+import com.livegameengine.scxml.model.Error;
+import com.livegameengine.scxml.model.FlagStateAsImportant;
+import com.livegameengine.scxml.model.PlayerJoin;
+import com.livegameengine.scxml.semantics.SCXMLGameSemanticsImpl;
+import com.sun.org.apache.bcel.internal.generic.NEW;
+
+import org.mozilla.javascript.Context;
+import org.mozilla.javascript.Function;
+import org.mozilla.javascript.NativeArray;
+import org.mozilla.javascript.Scriptable;
+import org.mozilla.javascript.ScriptableObject;
+import org.mozilla.javascript.Undefined;
+import org.mozilla.javascript.annotations.JSGetter;
+import org.mozilla.javascript.xml.XMLLib;
+import org.mozilla.javascript.xmlimpl.XMLLibImpl;
+import org.w3c.dom.Document;
+import org.w3c.dom.Node;
+import org.xml.sax.Attributes;
+import org.xml.sax.ContentHandler;
+import org.xml.sax.ErrorHandler;
+import org.xml.sax.InputSource;
+import org.xml.sax.Locator;
+import org.xml.sax.SAXException;
+import org.xml.sax.SAXParseException;
+
+import com.google.appengine.api.channel.ChannelMessage;
+import com.google.appengine.api.channel.ChannelService;
+import com.google.appengine.api.channel.ChannelServiceFactory;
+import com.google.appengine.api.datastore.Key;
+import com.google.appengine.api.datastore.KeyFactory;
+import com.google.appengine.api.users.User;
+import com.google.appengine.api.utils.SystemProperty;
+
+import flexjson.JSONSerializer;
+import flexjson.transformer.StringTransformer;
+
+import javax.jdo.JDOHelper;
+import javax.jdo.ObjectState;
+import javax.jdo.PersistenceManager;
+import javax.jdo.Query;
+import javax.jdo.annotations.Element;
+import javax.jdo.annotations.FetchGroup;
+import javax.jdo.annotations.IdGeneratorStrategy;
+import javax.jdo.annotations.NotPersistent;
+import javax.jdo.annotations.Order;
+import javax.jdo.annotations.PersistenceCapable;
+import javax.jdo.annotations.Persistent;
+import javax.jdo.annotations.PrimaryKey;
+import javax.jdo.annotations.Extension;
+import javax.xml.bind.annotation.XmlList;
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.stream.XMLStreamException;
+import javax.xml.stream.XMLStreamWriter;
+import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerConfigurationException;
+import javax.xml.transform.TransformerException;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
+import javax.xml.transform.stream.StreamSource;
+
+
+@PersistenceCapable(detachable = "true")
+@FetchGroup(name = "GameGroup", members = { @Persistent(name="players") })
+public class Game implements Scriptable, EventDispatcher, SCXMLListener {
+	@NotPersistent
+	private Scriptable parent_, prototype_;
+	
+	@NotPersistent
+	private FindPlayerByRoleFunction findPlayerByRoleFunction_ = null;
+		
+	@PrimaryKey
+	@Persistent(valueStrategy = IdGeneratorStrategy.IDENTITY)
+	private Key key;
+	
+	@Persistent
+	private Key owner;
+	
+	@Persistent
+	private Date created;
+		
+	@Persistent
+	private Key gameTypeKey;
+	
+	@Persistent
+	@Element(dependent = "true", mappedBy = "game", extensions = @Extension(vendorName="datanucleus", key="cascade-persist", value="true"))
+	@Order(extensions = @Extension(vendorName="datanucleus", key="list-ordering", value="role asc"))	
+	private List<Player> players;
+	
+	@Persistent
+	@Element(dependent = "true", mappedBy = "game", extensions = @Extension(vendorName="datanucleus", key="cascade-persist", value="true"))
+	@Order(extensions = @Extension(vendorName="datanucleus", key="list-ordering", value="eventDate asc"))
+	private List<GameHistoryEvent> events;
+	
+	@Persistent
+	@Element(dependent = "true", mappedBy = "game", extensions = @Extension(vendorName="datanucleus", key="cascade-persist", value="true"))
+	@Order(extensions = @Extension(vendorName="datanucleus", key="list-ordering", value="stateDate asc"))
+	private List<GameState> states;
+	
+	@NotPersistent
+	transient private Log log = LogFactory.getLog(Game.class);
+	
+
+	@NotPersistent
+	transient private boolean isDirty_ = false;
+	
+	@NotPersistent
+	transient private boolean isError_ = false;
+	
+	@NotPersistent
+	transient private boolean isImportant_ = false;
+	
+	@NotPersistent
+	transient private String errorMessage_ = "";
+		
+	//not persistent
+	@NotPersistent
+	transient private Map<String,String> params;
+	
+	@NotPersistent
+	transient private SCXML scxml;
+	
+	@NotPersistent
+	transient private List<Exception> loadWarnings;
+	
+	@NotPersistent
+	private
+	transient SCXMLExecutor exec;
+	
+	@NotPersistent
+	transient private JsEvaluator eval;
+	
+	@NotPersistent
+	transient private JsContext cxt;
+	
+	@NotPersistent transient private GameUser currentUser_ = null;
+	
+	public Game() {
+		/*
+		events = new ArrayList<GameHistoryEvent>();
+		states = new ArrayList<GameState>();
+		params = new HashMap<String,String>();
+		players = new ArrayList<Player>();
+		*/
+	}
+	
+	public Game(GameType gt) throws GameLoadException {
+		this();
+		
+		setGameType(gt);
+		setCreated(new Date());
+		init();
+	}
+	
+	private void init() throws GameLoadException {
+		//GameType gt = getGameType();
+		//InputStream bis = new ByteArrayInputStream(gt.getStateChart());
+		InputStream bis = Game.class.getResourceAsStream("/tictac2.xml");
+		
+		loadWarnings = new ArrayList<Exception>();
+		
+		List<CustomAction> customActions = new ArrayList<CustomAction>();
+		customActions.add(new CustomAction(Config.getInstance().getGameEngineNamespace(), "error", Error.class));
+		customActions.add(new CustomAction(Config.getInstance().getGameEngineNamespace(), "success", Error.class));
+		customActions.add(new CustomAction(Config.getInstance().getGameEngineNamespace(), "playerJoin", PlayerJoin.class));
+		customActions.add(new CustomAction(Config.getInstance().getGameEngineNamespace(), "flagStateAsImportant", FlagStateAsImportant.class));
+				
+		scxml = null;
+		try {
+			scxml = SCXMLParser.parse(new InputSource(bis), new ErrorHandler() {
+				@Override
+				public void warning(SAXParseException exception) throws SAXException {
+					loadWarnings.add(exception);
+				}
+				@Override
+				public void fatalError(SAXParseException exception) throws SAXException {
+					throw exception;				
+				}
+				@Override
+				public void error(SAXParseException exception) throws SAXException {
+					throw exception;							
+				}
+			}, customActions);
+		} catch (SAXException e) {
+			throw new GameLoadException("Fatal parse error.", e);
+		} catch (ModelException e) {
+			throw new GameLoadException("Fatal parse error.", e);
+		} catch (IOException e) {
+			throw new GameLoadException("Fatal parse error.", e);
+		}
+
+		eval = new JsEvaluator();
+		ErrorReporter rep = new ErrorReporter() {
+			@Override
+			public void onError(String errCode, String errDetail, Object errCtx) {
+				// TODO really handle errors here.
+				log.error(errCode + ": " + errDetail);
+			}
+		};
+		
+		exec = new SCXMLExecutor(eval, null, rep, new SCXMLGameSemanticsImpl());
+		exec.addListener(scxml, this);
+		exec.setEventdispatcher(this);
+		exec.setStateMachine(scxml);
+		
+		cxt = (JsContext)exec.getRootContext();
+		cxt.set("game", this);		
+		
+		try {
+			GameState gs = null;
+			
+			gs = getMostRecentState();		
+		
+			if(gs != null) {				
+				gs.injectInto(cxt);
+				
+				Set s = exec.getCurrentStatus().getStates();
+				Map ms = exec.getStateMachine().getTargets();
+				s.clear();
+				
+				Set<String> ss = gs.getStateSet();
+				for(String state : ss) {
+					s.add(ms.get(state));
+				}				
+			}
+			
+			if(gs == null) {
+				exec.go();
+				
+				persistGameState(true);
+			}
+		}
+		catch(ModelException e) {
+			throw new GameLoadException("Could not start the machine.", e);
+		}
+		isDirty_ = false;
+		
+	}
+	
+	public boolean getPersisted() {
+		ObjectState os = JDOHelper.getObjectState(this);
+		
+		return os == ObjectState.PERSISTENT_CLEAN || os == ObjectState.PERSISTENT_NEW || os == ObjectState.HOLLOW_PERSISTENT_NONTRANSACTIONAL;
+	}
+	
+
+	public GameState persistGameState(boolean isImportant) {
+		GameState.deleteOldStatesForGame(this);
+		
+		GameState gs = new GameState(this);
+		
+		Set<State> s = exec.getCurrentStatus().getStates();
+		for(State state : s) {
+			gs.getStateSet().add(state.getId());
+		}
+		gs.setStateDate(new Date());
+		gs.extractFrom(scxml.getDatamodel(), cxt);
+		gs.setImportant(isImportant_ || isImportant);
+		getStates().add(gs);
+		
+		makePersistent();
+		
+		
+		isDirty_ = false;
+		isError_ = false;
+		isImportant_ = false;
+		
+		return gs;
+	}
+	
+	public List<GameState> getStates() {
+		if(this.states == null) {
+			this.states = new ArrayList<GameState>();
+		}
+		return this.states;
+	}
+
+	@Override
+	public void cancel(String sendId) {
+		// TODO Auto-generated method stub	
+	}
+
+	@Override
+	public void send(String sendId, String target, String targetType,
+			String event, Map params, Object hints, long delay,
+			Object content, List externalNodes) {
+		
+		log.info(String.format("Send Event '%s'", event));
+		
+		boolean success = false;
+		
+		if(	targetType.equals(Config.getInstance().getGameEventTargetType()) &&
+			target.equals(Config.getInstance().getGameEventTarget())) {
+			if(event.equals("game.playerJoin")) {
+				String playerid = null;
+				GameUser gameUser = null;
+				
+				if(params.get("playerid") != null) {
+					playerid = params.get("playerid").toString();
+				}
+				else if(currentUser_ != null) {
+					playerid = currentUser_.getHashedUserId();
+				}
+				
+				String role = params.get("role").toString();
+				
+				if(playerid != null) {
+					gameUser = GameUser.findByHashedUserId(playerid);
+				}
+				
+				if(gameUser != null) {
+					addPlayer(gameUser, role);
+					success = true;
+					isError_ = false;
+				}
+				else {
+					isError_ = true;
+					errorMessage_ = "invalid player id, likely a problem with the scxml game rules";
+				}
+			}
+			else if(event.equals("game.error")) {
+				errorMessage_ = params.get("message").toString();
+				log.error("[error]: " + params.get("message"));
+				isError_ = true;
+			}
+			else if(event.equals("game.success")) {
+				isError_ = false;
+			}
+			else if(event.equals("game.flagStateAsImportant")) {
+				isImportant_ = Boolean.parseBoolean(params.get("important").toString());
+			}
+			else {
+				success = true;
+				isError_ = false;
+			}
+		}
+		
+		if(success) {
+			//persistGameState();
+			sendWatcherMessage(event, params, content);
+		}
+	}
+
+	public boolean sendStartGameRequest(User user) {
+		isError_ = false;
+		
+		GameUser gu = GameUser.findOrCreateGameUserByUser(user);
+		
+		if(gu.getKey().compareTo(owner) != 0) {
+			return false;
+		}
+		
+		Document doc = Config.getInstance().newXmlDocument();
+		
+		Node player = doc.createElementNS(Config.getInstance().getGameEngineNamespace(), "player");
+		player.appendChild(doc.createTextNode(gu.getHashedUserId()));
+		doc.appendChild(player);
+				
+		try {
+			getExec().triggerEvent(new TriggerEvent("game.startGame", TriggerEvent.SIGNAL_EVENT, doc));
+		} catch (ModelException e) {
+			e.printStackTrace();
+			return false;
+		}
+		
+		if(isDirty_ && !isError_) {
+			persistGameState(true);
+			isDirty_ = false;
+			isError_ = false;
+			return true;
+		}
+		else {
+			isDirty_ = false;
+			isError_ = false;
+			return false;
+		}
+	}
+	public boolean sendPlayerJoinRequest(User user) {
+		isError_ = false;
+		
+		GameUser gu = GameUser.findOrCreateGameUserByUser(user);
+		
+		Document doc = Config.getInstance().newXmlDocument();
+		
+		Node player = doc.createElementNS(Config.getInstance().getGameEngineNamespace(), "player");
+		player.appendChild(doc.createTextNode(gu.getHashedUserId()));
+		doc.appendChild(player);
+		
+		currentUser_ = gu;
+		
+		try {
+			getExec().triggerEvent(new TriggerEvent("game.playerJoin", TriggerEvent.SIGNAL_EVENT, doc));
+		} catch (ModelException e) {
+			//TODO: exception handling...
+			e.printStackTrace();
+			return false;
+		}
+		
+		currentUser_ = null;
+		
+		if(isDirty_ && !isError_) {
+			persistGameState(true);
+		}
+		else {
+			isDirty_ = false;
+			isError_ = false;
+		}
+		
+		return true;
+	}
+	
+	public boolean getIsError() {
+		return isError_;
+	}
+	public String getErrorMessage() {
+		return errorMessage_;
+	}
+		
+	public void sendWatcherMessage(String event, Map params, Object content) {
+		DocumentBuilderFactory docbuilderfactory = DocumentBuilderFactory.newInstance();
+		DocumentBuilder builder = null;
+		try {
+			builder = docbuilderfactory.newDocumentBuilder();
+		} catch (ParserConfigurationException e) {
+			e.printStackTrace();
+			return;
+		}
+		Document doc = builder.newDocument();
+		
+		Node eventNode = doc.createElement("event");
+		Node eventName = doc.createAttribute("name");
+		eventName.setNodeValue(event);
+		eventNode.getAttributes().setNamedItem(eventName);
+		
+		Set paramsKeys = params.keySet();
+		for(Iterator i = paramsKeys.iterator(); i.hasNext(); ) {
+			String paramName = (String)i.next();
+			
+			Node paramNode = doc.createElement("param");
+			Node paramNameNode = doc.createAttribute("name");
+			paramNameNode.setNodeValue(paramName);
+			paramNode.getAttributes().setNamedItem(paramNameNode);
+			
+			paramNode.setTextContent(params.get(paramName).toString());
+			
+			eventNode.appendChild(paramNode);
+		}
+		
+		if(content != null) {
+			
+			Node contentNode = doc.createElement("content");
+			Node contentBody = null;
+			try {
+				contentBody = XMLLibImpl.toDomNode(content);
+			}
+			catch(IllegalArgumentException e) {
+				contentBody = null;
+			}
+			
+			if(contentBody != null) {
+				Node imported = doc.importNode(contentBody, true);
+				contentNode.appendChild(imported);
+			}
+			else {
+				contentNode.setTextContent(content.toString());
+			}
+			eventNode.appendChild(contentNode);
+		}
+		
+		doc.appendChild(eventNode);
+		
+		TransformerFactory factory = TransformerFactory.newInstance();
+		Transformer trans = null;				
+										
+		try {
+			trans = factory.newTransformer(new StreamSource(Config.getInstance().getDataModelTransformStream()));
+		} catch (TransformerConfigurationException e) {
+			e.printStackTrace();
+			return;
+		}
+		
+		ChannelService channelService = ChannelServiceFactory.getChannelService();
+		
+		List<Watcher> watchers = getWatchers();
+		for(Watcher w : watchers) {
+			ByteArrayOutputStream bos = new ByteArrayOutputStream();
+			
+			trans.setParameter(Config.getInstance().getDataModelTransformPlayerIdParam(), KeyFactory.keyToString(w.getGameUserKey()));				
+						
+			try {
+				trans.transform(new DOMSource(doc), new StreamResult(bos));
+			} catch (TransformerException e) {
+				e.printStackTrace();
+				continue;
+			}	
+			
+			String strmessage = "";
+			
+			try {
+				strmessage = bos.toString(Config.getInstance().getEncoding());
+			} catch (UnsupportedEncodingException e) {
+				e.printStackTrace();
+				continue;
+			}
+			
+			channelService.sendMessage(new ChannelMessage(w.getChannelkey(), strmessage));
+		}
+	}
+	
+	public String[] getTransitionEvents() {
+		Set<String> ret = new HashSet<String>();
+		
+		Set<State> s = exec.getCurrentStatus().getStates();
+		for(State state : s) {
+			List transitions = state.getTransitionsList();
+			for(Object o : transitions) {
+				Transition t = (Transition)o;
+				String event = t.getEvent();
+				if(event != null && !event.equals("")) {
+					ret.add(event);
+				}
+			}
+		}
+		
+		return ret.toArray(new String[0]);
+	}
+	
+	public static Game findUninitializedGameByKey(final Key key) {
+		Game ret = null;
+		
+		try {
+			ret = (Game)PMF.executeCommand(new PersistenceCommand() {
+				@Override
+				public Object exec(PersistenceManager pm) {
+			    	pm.getFetchPlan().setMaxFetchDepth(5);
+					Game ret = pm.getObjectById(Game.class, key);
+					
+					return ret;
+				}
+			});
+			
+			
+			
+		}
+		catch(PersistenceCommandException e) {
+			e.printStackTrace();
+			ret = null;
+		}
+		
+		return ret;
+	}
+	
+	public static Game findGameByKey(Key key) throws GameLoadException {
+		
+		Game ret = findUninitializedGameByKey(key);
+		
+		if(ret != null) {
+			ret.init();
+		}
+
+		return ret;
+	}
+	
+	protected SCXMLExecutor getExec() {
+		return exec;
+	}
+	
+	public Set<State> getCurrentStates() {
+		return getExec().getCurrentStatus().getStates();
+	}
+	
+	public GameUser getOwner() {
+		GameUser ret = null;
+		
+		try {
+			ret = (GameUser)PMF.executeCommand(new PersistenceCommand() {
+				@Override
+				public Object exec(PersistenceManager pm) {
+					return pm.getObjectById(GameUser.class, owner);
+				}
+			});
+		}
+		catch(PersistenceCommandException e) {
+			ret = null;
+		}
+		
+		return ret;
+	}
+	public void setOwner(User u) {
+		GameUser gu = GameUser.findOrCreateGameUserByUser(u);
+		owner = gu.getKey();
+	}
+	
+	public List<GameHistoryEvent> getEvents() {
+		return events;
+	}
+	public GameState getMostRecentState() {
+		final Game param = this;
+		GameState ret = null;
+		
+		if(this.getKey() == null) return null;
+		
+		try {
+			ret = (GameState)PMF.executeCommand(new PersistenceCommand() {
+				@Override
+				public Object exec(PersistenceManager pm) {
+					Query q = pm.newQuery(GameState.class);
+					q.setFilter("game == gameIn");
+					q.setOrdering("stateDate desc");
+					q.setRange(0, 1);
+					q.declareParameters(Game.class.getName() + " gameIn");
+					
+					List<GameState> results = (List<GameState>)q.execute(param);
+					
+					if(results.size() > 0) {
+						return results.get(0);
+					}
+					else {
+						return null;
+					}
+				}
+			});
+		}
+		catch(PersistenceCommandException e) {
+			e.printStackTrace();
+			ret = null;
+		}		
+		return ret;
+	}
+	public Map<String,String> getParameters() {
+		return params;
+	}
+	
+	public Date getCurrentTime() {
+		return new Date();
+	}
+	public void addEvent(Date eventDate) {
+		GameHistoryEvent e = new GameHistoryEvent(this);
+		e.setEventDate(eventDate);
+		events.add(e);
+	}
+	public List<Player> getPlayers() {
+		if(players == null) {
+			players = new ArrayList<Player>();
+		}
+		return players;
+	}
+	private void addPlayer(User user, String role) {
+		GameUser gu = GameUser.findOrCreateGameUserByUser(user);
+		addPlayer(gu, role);
+	}
+	private void addPlayer(GameUser gameUser, String role) {
+		Player p = new Player(this, gameUser, role);
+		getPlayers().add(p);
+	}
+
+	public boolean triggerEvent(String eventid, Node node) {
+		boolean ret = true;
+		
+		isError_ = false;
+		
+		try {
+			getExec().triggerEvent(new TriggerEvent(eventid, TriggerEvent.SIGNAL_EVENT, node));
+		} catch (ModelException e) {
+			if(SystemProperty.environment.value() == SystemProperty.Environment.Value.Development)
+				e.printStackTrace();
+			return false;
+		}
+		
+		if(isDirty_ && !isError_) {
+			persistGameState(false);
+		}
+		else if(isError_) {
+			ret = false;
+		}
+		else if(!isDirty_) {
+			ret = false;
+			errorMessage_ = String.format("Event '%s' was not valid in the current state of the game.", eventid);
+		}
+		
+		isDirty_ = false;
+		isError_ = false;
+		
+		return ret;
+	}
+	public List<Watcher> getWatchers() {
+		return Watcher.findWatchersByGame(this);
+	}
+	public Watcher addWatcher(User user) {
+		final GameUser gu = GameUser.findOrCreateGameUserByUser(user);
+		final Game game = this;
+		
+		Watcher ret = null;
+		
+		try {
+			ret = (Watcher)PMF.executeCommandInTransaction(new PersistenceCommand() {
+				@Override
+				public Object exec(PersistenceManager pm) {
+					Watcher w = Watcher.findWatcherByGameAndGameUser(game, gu);
+					
+					if(w == null) {
+						w = new Watcher(game, gu);
+						pm.makePersistent(w);
+					}
+					
+					return w;
+				}
+			});
+		}
+		catch(PersistenceCommandException e) {
+			//TODO: handle this exception
+			e.printStackTrace();
+		}		
+		
+		return ret;
+	}
+	public boolean removeWatcher(User user) {
+		final GameUser gu = GameUser.findOrCreateGameUserByUser(user);
+		final Game game = this;
+		
+		boolean ret = false;
+		
+		try {
+			ret = (Boolean)PMF.executeCommandInTransaction(new PersistenceCommand() {
+				@Override
+				public Object exec(PersistenceManager pm) {
+					Watcher w = Watcher.findWatcherByGameAndGameUser(game, gu);
+					
+					if(w == null) {
+						return false;
+					}
+					else {
+						pm.deletePersistent(w);
+						return true;
+					}
+				}
+			});
+		}
+		catch(PersistenceCommandException e) {
+			//TODO: handle this exception
+			e.printStackTrace();
+		}		
+		
+		return ret;
+	}
+	public void setGameType(GameType gt) {
+		if(gt != null) this.gameTypeKey = gt.getKey();
+		else this.gameTypeKey = null;
+	}
+	public GameType getGameType() {
+		if(this.gameTypeKey == null) 
+			return null;
+		else 
+			return GameType.findByKey(this.gameTypeKey);
+	}
+	
+	public void makePersistent() {
+		final Game persist = this;
+		
+		try {
+			PMF.makePersistent(this);
+			/*
+			PMF.executeCommandInTransaction(new PersistenceCommand() {
+				@Override
+				public Object exec(PersistenceManager pm) {
+					pm.makePersistent(persist);
+
+					for(Iterator<Player> i = persist.players.iterator(); i.hasNext();) {
+						Player p = i.next();
+						pm.makePersistent(p);
+					}
+					
+					return null;
+				}
+			});
+			*/
+		}
+		catch(PersistenceCommandException e) {
+			e.printStackTrace();
+		}
+	}
+		
+	@Override
+	public void onEntry(TransitionTarget state) {
+		log.info("OnEntry: " + state.getId());			
+	}
+
+	@Override
+	public void onExit(TransitionTarget state) {
+		log.info("OnExit: " + state.getId());	
+	}
+
+	@Override
+	public void onTransition(TransitionTarget from, TransitionTarget to,
+			Transition transition) {
+		log.info("OnTransition: " + from.getId() + " -> " + to.getId() + ": [" + transition.getEvent() + "]");
+		isDirty_ = true;		
+	}
+
+	public Key getKey() {
+		return key;
+	}
+
+	public Date getCreated() {
+		return created;
+	}
+
+	public void setCreated(Date created) {
+		this.created = created;
+	}
+	
+
+    @Override
+    public Object getDefaultValue(Class<?> typeHint) {
+        return toString();
+    }
+
+	@Override
+	public String getClassName() {
+		return "Game";
+	}
+
+	@Override
+	public void delete(String arg0) {
+		// not implemented
+	}
+
+	@Override
+	public void delete(int arg0) {
+		// not implemented
+	}
+
+	@Override
+	public Object get(int arg0, Scriptable arg1) {
+		return NOT_FOUND;
+	}
+
+	public void serializeToXml(String elementName, XMLStreamWriter writer) throws XMLStreamException {
+		String ns = Config.getInstance().getGameEngineNamespace();
+		writer.writeStartElement(ns, elementName);
+		writer.writeNamespace("", Config.getInstance().getGameEngineNamespace());
+		writer.writeAttribute("key", KeyFactory.keyToString(getKey()));
+		writer.writeStartElement(ns, "players");
+		for(Iterator<Player> i = getPlayers().iterator(); i.hasNext();) {
+			Player p = i.next();
+			p.serializeToXml("player", writer);
+		}
+		writer.writeEndElement();
+		writer.writeStartElement(ns, "currentTime");
+		writer.writeCharacters(Config.getInstance().getDateFormat().format(getCurrentTime()));
+		writer.writeEndElement();
+		writer.writeStartElement(ns, "created");
+		writer.writeCharacters(Config.getInstance().getDateFormat().format(getCreated()));
+		writer.writeEndElement();
+		
+		//TODO: evaluate if we really need this
+		GameState gs = getMostRecentState();
+		if(gs != null) {
+			gs.serializeToXml("mostRecentState", writer);
+		}
+		
+		getOwner().serializeToXml("owner", writer);
+		
+		writer.writeStartElement(ns, "gameTypeKey");
+		writer.writeCharacters(KeyFactory.keyToString(gameTypeKey));
+		writer.writeEndElement();
+		
+		writer.writeEndElement();
+	}
+	
+	@Override
+	public Object get(String name, Scriptable start) {
+		//TODO: make this more gracefull/efficient
+		if(name.equals("created"))
+        	return this.getCreated();
+        else if (name.equals("currentTime"))
+            return this.getCurrentTime();
+        else if(name.equals("errorMessage"))
+        	return this.getErrorMessage();
+        else if(name.equals("findPlayerByRole"))
+        	return this.getFindPlayerByRoleFunction();
+        else if(name.equals("gameType"))
+        	return this.getGameType();
+        else if(name.equals("isError"))
+        	return this.getIsError();
+        else if(name.equals("key"))
+        	return KeyFactory.keyToString(this.getKey());
+        else if(name.equals("owner"))
+        	return this.getOwner();
+        else if(name.equals("players"))
+        	return this.getPlayers();
+        
+        
+        return NOT_FOUND;
+	}
+	
+	private FindPlayerByRoleFunction getFindPlayerByRoleFunction() {
+		if(findPlayerByRoleFunction_ == null)
+			findPlayerByRoleFunction_ = new FindPlayerByRoleFunction(this);
+		
+		return findPlayerByRoleFunction_;
+	}
+
+	@Override
+	public Object[] getIds() {
+		return new Object[] {
+			"created",
+			"currentStates",
+			"currentTime",
+			"errorMessage",
+			"findPlayerByRole",
+			"gameType",
+			"isError",
+			"key",
+			"owner",
+			"players"
+		};
+	}
+
+	@Override
+	public Scriptable getParentScope() {
+		return parent_;
+	}
+
+	@Override
+	public Scriptable getPrototype() {
+		return prototype_;
+	}
+
+	@Override
+	public boolean has(String arg0, Scriptable arg1) {
+		String[] ids = (String[])getIds();
+		
+		return Arrays.binarySearch(ids, arg0) >= 0;
+	}
+
+	@Override
+	public boolean has(int arg0, Scriptable arg1) {
+		return false;
+	}
+
+	@Override
+	public boolean hasInstance(Scriptable value) {
+        Scriptable proto = value.getPrototype();
+        while (proto != null) {
+            if (proto.equals(this))
+                return true;
+            proto = proto.getPrototype();
+        }
+
+        return false;
+	}
+
+	@Override
+	public void put(String arg0, Scriptable arg1, Object arg2) {
+		// all properties are read only		
+	}
+
+	@Override
+	public void put(int arg0, Scriptable arg1, Object arg2) {
+		// all properties are read only		
+	}
+
+	@Override
+	public void setParentScope(Scriptable arg0) {
+		parent_ = arg0;
+	}
+
+	@Override
+	public void setPrototype(Scriptable arg0) {
+		prototype_ = arg0;
+	}
+
+}

@@ -1,0 +1,7 @@
+<project name="livegameengine" default="debug" basedir="..">
+	<target name="debug">
+		<copy todir="war/client" overwrite="true">
+			<fileset dir="client" />
+		</copy>
+	</target>
+</project>

@@ -1,0 +1,2 @@
+serviceClass: com.livegameengine.client.GreetingService
+path: 1828CC205BDD055CE263589A244A3578.gwt.rpc
