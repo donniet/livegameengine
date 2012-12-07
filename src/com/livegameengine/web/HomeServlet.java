@@ -19,8 +19,6 @@ import com.google.appengine.api.users.UserService;
 import com.google.appengine.api.users.UserServiceFactory;
 import com.livegameengine.model.GameType;
 import com.livegameengine.persist.PMF;
-import com.livegameengine.persist.PersistenceCommand;
-import com.livegameengine.persist.PersistenceCommandException;
 
 public class HomeServlet extends HttpServlet {
 	private Log log = LogFactory.getLog(HomeServlet.class);
@@ -33,24 +31,16 @@ public class HomeServlet extends HttpServlet {
 		
 		boolean authenticated = (req.getUserPrincipal() != null);
 		
-		RequestDispatcher dispatcher = req.getRequestDispatcher("/WEB-INF/home.jsp");
 		
-		List<GameType> types = new ArrayList<GameType>();
+		PersistenceManager pm = PMF.getInstance().getPersistenceManager();
 		
-		try {
-			types = (List<GameType>)PMF.executeCommand(new PersistenceCommand() {
-				@Override
-				public Object exec(PersistenceManager pm) {
-					Query q = pm.newQuery(GameType.class);
-					q.setOrdering("typeName");
-					List<GameType> results = (List<GameType>)q.execute();
-					return results;
-				}
-			});
-		} catch (PersistenceCommandException e1) {}
-		
+		Query q = pm.newQuery(GameType.class);
+		q.setOrdering("typeName");
+		List<GameType> types = (List<GameType>)q.execute();
+				
 		req.setAttribute("types", types);
 		
+		RequestDispatcher dispatcher = req.getRequestDispatcher("/WEB-INF/home.jsp");
 		try {
 			dispatcher.forward(req, resp);
 		}

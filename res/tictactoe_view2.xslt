@@ -4,9 +4,14 @@
 	xmlns="http://www.w3.org/1999/xhtml" 
 	xmlns:tic="http://www.livegameengine.com/schemas/games/tictactoe.xsd"
 	xmlns:view="http://www.livegameengine.com/schemas/view.xsd"
+	xmlns:game="http://www.livegameengine.com/schemas/game.xsd"
 	xmlns:scxml="http://www.w3.org/2005/07/scxml"
 	xmlns:xalan="http://xml.apache.org/xalan"
 	xmlns:fn="http://www.w3.org/2005/xpath-functions">
+	
+	<xsl:param name="game-meta-uri" select="'game://current/meta'" />
+	
+	<xsl:variable name="game-meta-doc" select="document($game-meta-uri)" />
 	
 	<xsl:template match="/">
 		<view:doc>
@@ -26,8 +31,20 @@
 				</input>
 				
 				<xsl:apply-templates select="scxml:datamodel/scxml:data/tic:board" />
+				
+				<xsl:call-template name="players" />
 			</view:body>
 		</view:doc>
+	</xsl:template>
+	
+	<xsl:template name="players">
+		<ul>
+			<xsl:apply-templates select="$game-meta-doc//game:player" />
+		</ul>
+	</xsl:template>
+	
+	<xsl:template match="game:player">
+		<li><xsl:value-of select="game:gameUser/game:nickname" /> : <xsl:value-of select="game:role" /></li>
 	</xsl:template>
 	
 	<xsl:template match="tic:board">

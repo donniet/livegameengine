@@ -134,7 +134,7 @@
 	<xsl:template name="channelSetup">
 		<xsl:if test="string-length($userToken) > 0">
 		
-		View.getInstance().setUserToken(<xsl:value-of select="$userToken" />);
+		View.getInstance().setUserToken("<xsl:value-of select="$userToken" />");
 		
 		</xsl:if>
 	</xsl:template>

@@ -26,8 +26,12 @@ View.getInstance = function() {
 View.prototype.init = function() {
 	this.createChannel();
 }
-View.prototype.handleSocketMessage = function() {
-	
+View.prototype.reload = function() {
+	window.location.reload();
+}
+View.prototype.handleSocketMessage = function(msg) {
+	console.log("entire socket message: " + msg.data);	
+	this.reload();
 }
 View.prototype.handleSocketError = function() {
 	
@@ -74,7 +78,7 @@ View.prototype.registerJoinEndpoint = function(obj) {
 	this.joinEndpoint_ = obj;
 };
 View.prototype.handleEventSuccess = function(el, event, responseXML) {
-	document.location.reload();
+	this.reload();
 }
 View.prototype.handleEventError = function(el, event, responseXML) {
 	var el = responseXML.getElementsByTagNameNS(this.gameNamespace_, "error");

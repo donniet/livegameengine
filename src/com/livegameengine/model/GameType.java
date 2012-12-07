@@ -3,6 +3,7 @@ package com.livegameengine.model;
 import java.util.Arrays;
 import java.util.List;
 
+import javax.jdo.JDOHelper;
 import javax.jdo.PersistenceManager;
 import javax.jdo.Query;
 import javax.jdo.annotations.IdGeneratorStrategy;
@@ -22,8 +23,6 @@ import com.google.appengine.api.datastore.KeyFactory;
 import com.google.appengine.api.users.User;
 import com.livegameengine.config.Config;
 import com.livegameengine.persist.PMF;
-import com.livegameengine.persist.PersistenceCommand;
-import com.livegameengine.persist.PersistenceCommandException;
 
 @PersistenceCapable
 public class GameType implements Scriptable {
@@ -57,69 +56,33 @@ public class GameType implements Scriptable {
 		return key;
 	}
 	
-	public static GameType findByTypeName(final String typeName) {
-		GameType ret = null;
-		try {
-			ret = (GameType)PMF.executeCommand(new PersistenceCommand() {
-				@Override
-				public Object exec(PersistenceManager pm) {
-					Query q = pm.newQuery(GameType.class);
-					q.setFilter("typeName == typeNameIn");
-					q.declareParameters("String typeNameIn");
-					
-					List<GameType> results = (List<GameType>)q.execute(typeName);
-					if(results.size() > 0) {
-						return results.get(0);
-					}
-					else {
-						return null;
-					}
-				}
-			});
+	public static GameType findByTypeName(final String typeName) {		
+		PersistenceManager pm = PMF.getInstance().getPersistenceManager();
+		
+		Query q = pm.newQuery(GameType.class);
+		q.setFilter("typeName == typeNameIn");
+		q.declareParameters("String typeNameIn");
+		
+		List<GameType> results = (List<GameType>)q.execute(typeName);
+		if(results.size() > 0) {
+			return results.get(0);
 		}
-		catch(PersistenceCommandException e) {
-			e.printStackTrace();
-			ret = null;
-		}
-		
-		return ret;
-		
-		
+		else {
+			return null;
+		}	
 	}
 	public static GameType findByKey(final Key key) {
-		GameType ret = null;
-		try {
-			ret = (GameType)PMF.executeCommand(new PersistenceCommand() {
-				@Override
-				public Object exec(PersistenceManager pm) {
-					return pm.getObjectById(GameType.class, key);
-				}
-			});
-		}
-		catch(PersistenceCommandException e) {
-			ret = null;
-		}
+		PersistenceManager pm = PMF.getInstance().getPersistenceManager();
 		
-		return ret;
+		return pm.getObjectById(GameType.class, key);
 	}
+	/*
 	public void makePersistent() {
-		final GameType persist = this;
-		try {
-			PMF.makePersistent(this);
-			/*
-			PMF.executeCommandInTransaction(new PersistenceCommand() {
-				@Override
-				public Object exec(PersistenceManager pm) {
-					pm.makePersistent(persist);
-					return null;
-				}
-			});
-			*/
-		}
-		catch(PersistenceCommandException e) {
-			e.printStackTrace();
-		}
+		PersistenceManager pm = JDOHelper.getPersistenceManager(this);
+		
+		pm.makePersistent(this);
 	}
+	*/
 	
 	public void setTypeName(String typeName) {
 		this.typeName = typeName;

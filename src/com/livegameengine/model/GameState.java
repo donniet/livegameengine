@@ -50,12 +50,10 @@ import com.google.appengine.api.datastore.Blob;
 import com.google.appengine.api.datastore.Key;
 import com.google.appengine.api.datastore.KeyFactory;
 import com.livegameengine.persist.PMF;
-import com.livegameengine.persist.PersistenceCommand;
-import com.livegameengine.persist.PersistenceCommandException;
 import com.livegameengine.scxml.js.JsContext;
 
-@PersistenceCapable //(detachable="true")
-public class GameState implements Scriptable {
+@PersistenceCapable(detachable="true")
+public class GameState implements Scriptable { 
 	private static final long serialVersionUID = 1;
 	
 	@NotPersistent private Scriptable parent_, prototype_;
@@ -63,9 +61,9 @@ public class GameState implements Scriptable {
 	@PrimaryKey
 	@Persistent(valueStrategy = IdGeneratorStrategy.IDENTITY)
 	private Key key;
-	
+		
 	@Persistent
-	private Game game;
+	private Key gameKey;
 	
 	@Persistent
 	private Date stateDate = new Date();
@@ -82,26 +80,20 @@ public class GameState implements Scriptable {
 	private Set<String> stateSet;
 	
 	protected GameState(Game game) {
-		this.game = game;
+		this.gameKey = game.getKey();
 		stateDate = new Date();
-		setDatamodel(new ArrayList<GameStateData>());
-		stateSet = new HashSet<String>();
-	}
-	public GameState() {
-		game = null;
-		stateDate = new Date();
-		setDatamodel(new ArrayList<GameStateData>());
+		datamodel = new ArrayList<GameStateData>();
 		stateSet = new HashSet<String>();
 	}
 	public Key getKey() {
 		return key;
 	}
-	protected void setGame(Game game) {
-		this.game = game;
+	public Key getGameKey() {
+		return gameKey;
 	}
-	protected Game getGame() {
-		return game;
-	}	
+	protected void setGameKey(Key gameKey) {
+		this.gameKey = gameKey;
+	}
 	public void setStateDate(Date stateDate_) {
 		this.stateDate = stateDate_;
 	}
@@ -111,44 +103,7 @@ public class GameState implements Scriptable {
 	public Set<String> getStateSet() {
 		return stateSet;
 	}
-	
-	public static void deleteOldStatesForGame(final Game game) {
-		/* do nothing for now */
-		return;
-		/*
-		try {
-			PMF.executeCommandInTransaction(new PersistenceCommand() {
-				@Override
-				public Object exec(PersistenceManager pm) {
-					if(game.getPersisted()) {
-					
-						Query q = pm.newQuery(GameState.class, "game == gameIn && important == false");
-						q.declareParameters(Game.class.getName() + " gameIn");
-						q.setResult("count(key)");
-						
-						long results = (Long)q.execute(game);
-						
-						int stateHistorySize = Config.getInstance().getStateHistorySize();
-											
-						if(results > 2 * stateHistorySize) {
-							q = pm.newQuery(GameState.class, "game == gameIn && important == false");
-							q.setOrdering("stateDate asc");
-							q.declareParameters(Game.class.getName() + " gameIn");
-							q.setRange(0, results - stateHistorySize);
-							q.deletePersistentAll(game);
-						}
-					}
-					
-					return null;
-				}
-			});
-		}
-		catch(PersistenceCommandException e) {
-			e.printStackTrace();
-		}
-		*/
-	}
-	
+		
 	/*
 	 * inject the datamodel into the context
 	 * 
@@ -199,7 +154,7 @@ public class GameState implements Scriptable {
 		}
 	}
 	
-	protected void extractFrom(Datamodel datamodel, JsContext cxt) {
+	protected void extractFrom(Datamodel model, JsContext cxt) {
 		Log log = LogFactory.getLog(GameState.class);
 		
 		TransformerFactory factory = TransformerFactory.newInstance();
@@ -214,7 +169,7 @@ public class GameState implements Scriptable {
 		
 		trans.setOutputProperty(OutputKeys.OMIT_XML_DECLARATION, "yes");
 		
-		for(Iterator<Data> i = datamodel.getData().iterator(); i.hasNext(); ) {
+		for(Iterator<Data> i = model.getData().iterator(); i.hasNext(); ) {
 			Data d = i.next();
 			
 			GameStateData gsd = new GameStateData(this);
@@ -235,39 +190,9 @@ public class GameState implements Scriptable {
 			this.getDatamodel().add(gsd);			
 		}
 	}
-	protected void setDatamodel(List<GameStateData> datamodel) {
-		this.datamodel = datamodel;
-	}
 	public List<GameStateData> getDatamodel() {
 		return datamodel;
-	}
-	
-	@SuppressWarnings("unchecked")
-	public void refreshDatamodel() {
-		List<GameStateData> results = null;
-		try {
-			results = (List<GameStateData>)PMF.executeCommand(new PersistenceCommand() {
-				@Override
-				public Object exec(PersistenceManager pm) {
-					Query q = pm.newQuery(GameStateData.class);
-					q.setFilter("gameState == gameStateToFind");
-					q.declareParameters(GameState.class.getName() + " gameStateToFind");
-					List<GameStateData> results = (List<GameStateData>)q.execute(this);
-										
-					pm.makeTransientAll(results);
-					
-					return results;
-				}
-			});
-		}
-		catch(PersistenceCommandException e) {
-			e.printStackTrace();
-		}
-		
-		if(results != null) {
-			setDatamodel(results);
-		}
-	}
+	}	
 	public boolean isImportant() {
 		return important;
 	}

@@ -23,7 +23,7 @@ import com.google.appengine.api.datastore.KeyFactory;
 import com.google.appengine.api.datastore.Text;
 
 @PersistenceCapable
-public class GameStateData implements Scriptable {
+public class GameStateData implements Scriptable { 
 	private static final long serialVersionUID = 1;
 	
 	@NotPersistent private Scriptable parent_, prototype_;

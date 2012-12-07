@@ -9,6 +9,7 @@ import java.util.Date;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import javax.jdo.JDOHelper;
 import javax.jdo.PersistenceManager;
 import javax.servlet.RequestDispatcher;
 import javax.servlet.ServletException;
@@ -25,8 +26,6 @@ import com.livegameengine.model.Game;
 import com.livegameengine.model.GameType;
 import com.livegameengine.model.GameUser;
 import com.livegameengine.persist.PMF;
-import com.livegameengine.persist.PersistenceCommand;
-import com.livegameengine.persist.PersistenceCommandException;
 
 import com.google.appengine.api.datastore.Key;
 import com.google.appengine.api.datastore.KeyFactory;
@@ -46,21 +45,9 @@ public class GameTypeServlet extends HttpServlet {
 		final Matcher m = p.matcher(req.getPathInfo());
 		
 		if(m != null && m.matches()) {
-			GameType t = null;
-			try {
-				t = (GameType)PMF.executeCommand(new PersistenceCommand() {
-					
-					@Override
-					public Object exec(PersistenceManager pm) {
-						Key k = KeyFactory.stringToKey(m.group(1));
+			Key k = KeyFactory.stringToKey(m.group(1));
+			GameType t = GameType.findByKey(k);
 						
-						return pm.getObjectById(GameType.class, k);
-					}
-				});
-			} catch (PersistenceCommandException e1) {
-				t = null;
-			}
-			
 			RequestDispatcher dispatcher = req.getRequestDispatcher("/WEB-INF/type.jsp");
 			
 			req.setAttribute("gameType", t);
@@ -117,25 +104,15 @@ public class GameTypeServlet extends HttpServlet {
 			
 			t.setStateChart(bos.toByteArray());
 			
-			t.makePersistent();
+			PersistenceManager pm = PMF.getInstance().getPersistenceManager();
+			pm.makePersistent(t);
 			
 			resp.sendRedirect("-/" + KeyFactory.keyToString(t.getKey()) + "/");
 		}
 		else if(m != null && m.matches()) {
-			GameType t = null;
-			try {
-				t = (GameType)PMF.executeCommand(new PersistenceCommand() {
-					
-					@Override
-					public Object exec(PersistenceManager pm) {
-						Key k = KeyFactory.stringToKey(m.group(1));
-						
-						return pm.getObjectById(GameType.class, k);
-					}
-				});
-			} catch (PersistenceCommandException e1) {
-				t = null;
-			}
+			Key k = KeyFactory.stringToKey(m.group(1));
+			GameType t = GameType.findByKey(k);
+			
 			
 			if(t == null) {
 				resp.sendError(404);
@@ -158,7 +135,9 @@ public class GameTypeServlet extends HttpServlet {
 				h.setOwner(userService.getCurrentUser());				
 				h.addWatcher(userService.getCurrentUser());
 				
-				h.makePersistent();
+				PersistenceManager pm = JDOHelper.getPersistenceManager(h);
+									
+				pm.makePersistent(h);
 				
 				resp.sendRedirect(String.format("/game/-/%s/", KeyFactory.keyToString(h.getKey())));
 			}

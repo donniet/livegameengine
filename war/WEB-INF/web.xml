@@ -21,6 +21,10 @@
     <servlet-name>gameTypeJspServlet</servlet-name>
     <jsp-file>/WEB-INF/type.jsp</jsp-file>
   </servlet>
+	<servlet>
+		<servlet-name>ChannelPresenceServlet</servlet-name>
+		<servlet-class>com.livegameengine.web.ChannelPresenceServlet</servlet-class>
+	</servlet>
   
   <servlet-mapping>
     <servlet-name>homeServlet</servlet-name>
@@ -42,6 +46,10 @@
   	<servlet-name>gameTypeJspServlet</servlet-name>
   	<url-pattern>/WEB-INF/type.jsp</url-pattern>
   </servlet-mapping>
+	<servlet-mapping>
+		<servlet-name>ChannelPresenceServlet</servlet-name>
+		<url-pattern>/_ah/channel/*</url-pattern>
+	</servlet-mapping>
 
   <servlet>
     <servlet-name>SystemServiceServlet</servlet-name>

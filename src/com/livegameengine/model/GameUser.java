@@ -17,6 +17,12 @@ import com.livegameengine.config.Config;
 
 import org.mozilla.javascript.Scriptable;
 import org.mozilla.javascript.ScriptableObject;
+import org.w3c.dom.DOMException;
+import org.w3c.dom.Document;
+import org.w3c.dom.NamedNodeMap;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
+import org.w3c.dom.UserDataHandler;
 
 import sun.security.provider.MD5;
 
@@ -24,12 +30,13 @@ import com.google.appengine.api.datastore.Key;
 import com.google.appengine.api.datastore.KeyFactory;
 import com.google.appengine.api.users.User;
 import com.livegameengine.persist.PMF;
-import com.livegameengine.persist.PersistenceCommand;
-import com.livegameengine.persist.PersistenceCommandException;
 
 @PersistenceCapable 
 public class GameUser implements Scriptable {
 	private static final long serialVersionUID = 4649802893267737141L;
+	
+	private static final String LOCAL_NAME = "gameUser";
+	private static final String NAMESPACE_PREFIX = "game";
 	
 	@NotPersistent
 	private Scriptable prototype_;
@@ -43,6 +50,9 @@ public class GameUser implements Scriptable {
 		
 	@Persistent
 	private User user;
+	
+	@Persistent
+	private boolean connected;
 			
 	public GameUser() {}
 	
@@ -51,22 +61,9 @@ public class GameUser implements Scriptable {
 	}
 	
 	public static GameUser findByKey(final Key key) {
-		GameUser ret = null;
+		PersistenceManager pm = PMF.getInstance().getPersistenceManager();
 		
-		try {
-			ret = (GameUser)PMF.executeCommand(new PersistenceCommand() {
-				@Override
-				public Object exec(PersistenceManager pm) {
-					return pm.getObjectById(GameUser.class, key);
-				}
-			});
-		}
-		catch(PersistenceCommandException e) {
-			e.printStackTrace();
-			ret = null;
-		}
-				
-		return ret;
+		return pm.getObjectById(GameUser.class, key);		
 	}
 	
 	public static GameUser findByHashedUserId(final String hashedUserId) {
@@ -77,44 +74,22 @@ public class GameUser implements Scriptable {
 	}
 	
 	public static GameUser findOrCreateGameUserByUser(final User user) {
-		GameUser ret = null;
+		PersistenceManager pm = PMF.getInstance().getPersistenceManager();
 		
-		try {
-			ret = (GameUser)PMF.executeCommand(new PersistenceCommand() {
-				@Override
-				public Object exec(PersistenceManager pm) {
-					Query q = pm.newQuery(GameUser.class);
-					q.setFilter("user == userIn");
-					q.declareParameters(User.class.getName() + " userIn");
-					List<GameUser> results = (List<GameUser>)q.execute(user);
-					
-					if(results.size() > 0) {
-						return results.get(0);
-					}
-					else {
-						return null;
-					}
-				}
-			});
-			
-			if(ret == null) {
-				ret = (GameUser)PMF.executeCommandInTransaction(new PersistenceCommand() {					
-					@Override
-					public Object exec(PersistenceManager pm) {
-						GameUser ret = new GameUser(user);
-						pm.makePersistent(ret);
-						return ret;
-					}
-				});
-			}
-			
-		}
-		catch(PersistenceCommandException e) {
-			e.printStackTrace();
-			ret = null;
-		}
+		Query q = pm.newQuery(GameUser.class);
+		q.setFilter("user == userIn");
+		q.declareParameters(User.class.getName() + " userIn");
+		List<GameUser> results = (List<GameUser>)q.execute(user);
 		
-		return ret;
+		if(results.size() > 0) {
+			return results.get(0);
+		}
+		else {
+			GameUser ret = new GameUser(user);
+			pm.makePersistent(ret);
+			
+			return ret;
+		}
 	}
 	
 	public String getHashedEmail() {
@@ -134,10 +109,14 @@ public class GameUser implements Scriptable {
 	public String getNickname() {
 		return user.getNickname();
 	}
-		
-	// scriptableobject stuff...
-	public String jsGet_hashedUserId() {
-		return getHashedUserId();
+	
+
+	public boolean isConnected() {
+		return connected;
+	}
+
+	public void setConnected(boolean connected) {
+		this.connected = connected;
 	}
 
 	@Override
@@ -169,12 +148,17 @@ public class GameUser implements Scriptable {
 			writer.writeStartElement(ns, "hashedEmail");
 				writer.writeCharacters(getHashedEmail());
 			writer.writeEndElement();
+			writer.writeStartElement(ns, "connected");
+				writer.writeCharacters(Boolean.toString(isConnected()));
+			writer.writeEndElement();
 		writer.writeEndElement();
 	}
 
 	@Override
 	public Object get(String arg0, Scriptable arg1) {
-		if(arg0.equals("key")) 
+		if(arg0.equals("connected"))
+			return isConnected();
+		else if(arg0.equals("key")) 
 			return KeyFactory.keyToString(getKey());
 		else if(arg0.equals("userid"))
 			return getHashedUserId();
@@ -199,7 +183,7 @@ public class GameUser implements Scriptable {
 	@Override
 	public Object[] getIds() {
 		return new Object[] {
-			"key", "userid", "nickname", "hashedEmail"
+			"connected", "key", "userid", "nickname", "hashedEmail"
 		};
 	}
 
@@ -260,4 +244,6 @@ public class GameUser implements Scriptable {
 	public void setPrototype(Scriptable arg0) {
 		prototype_ = arg0;
 	}
+
+
 }

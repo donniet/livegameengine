@@ -346,10 +346,13 @@ public class Config {
 			trans.transform(new StreamSource(new ByteArrayInputStream(gsd.getValue())), new DOMResult(datamodelNode));		
 		}
 		
-		trans = transformerFactory_.newTransformer(new StreamSource(getDataModelTransformStream()));
+		transformAsDatamodel(new DOMSource(doc), result, playerid);
+	}
+	public void transformAsDatamodel(Source source, Result result, String playerid) throws TransformerConfigurationException, TransformerException {
+		Transformer trans = transformerFactory_.newTransformer(new StreamSource(getDataModelTransformStream()));
 		trans.setParameter(this.getDataModelTransformPlayerIdParam(), playerid);				
 		
-		trans.transform(new DOMSource(doc), result);
+		trans.transform(source, result);
 	}
 	
 

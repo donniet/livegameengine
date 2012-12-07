@@ -2,8 +2,10 @@ package com.livegameengine.model;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.List;
 
+import javax.jdo.JDOHelper;
 import javax.jdo.PersistenceManager;
 import javax.jdo.Query;
 import javax.jdo.annotations.Column;
@@ -25,8 +27,6 @@ import com.google.appengine.api.datastore.KeyFactory;
 import com.google.appengine.api.users.User;
 import com.livegameengine.config.Config;
 import com.livegameengine.persist.PMF;
-import com.livegameengine.persist.PersistenceCommand;
-import com.livegameengine.persist.PersistenceCommandException;
 
 @PersistenceCapable
 public class Player implements Scriptable {
@@ -40,83 +40,42 @@ public class Player implements Scriptable {
 		
 	@Persistent
 	private Key gameUserKey;
-	
-	@Persistent
-	private boolean connected = false;
-	
+		
 	@Persistent
 	private Game game;
 	
-	@NotPersistent
-	transient private GameUser gameUser = null;
+	@Persistent
+	private Date playerJoin;
 	
 	@Persistent
 	private String role;
 	
-	public Player() {}
-	/*
-	public static List<Player> findPlayersByGame(final Game g) {
-		List<Player> ret = new ArrayList<Player>();
-		
-		try {
-			ret = (List<Player>)PMF.executeCommandInTransaction(new PersistenceCommand() {
-				@Override
-				public Object exec(PersistenceManager pm) {
-					Query q = pm.newQuery(Player.class);
-					q.setFilter("game == gameIn");
-					q.declareParameters(Game.class.getName() + " gameIn");
-					q.setRange(0, Config.getInstance().getMaxPlayers());
-					
-					return q.execute(g);
-				}
-			});
-		} catch (PersistenceCommandException e) {
-			//TODO: Handle exception
-			e.printStackTrace();
-		}
-		
-		return ret;
-	}
-	*/
+	public Player() {} 
+	
 	protected Player(Game game, GameUser gameUser, String role) {
 		this.game = game;
 		this.gameUserKey = gameUser.getKey();
-		this.gameUser = gameUser;
 		this.role = role;
+		this.playerJoin = new Date();
+	}
+	protected Player(Game game, GameUser gameUser, String role, Date playerJoin) {
+		this.game = game;
+		this.gameUserKey = gameUser.getKey();
+		this.role = role;
+		this.playerJoin = playerJoin;
 	}
 		
 	public Key getKey() { return key; }
 	public GameUser getGameUser() {
-		if(gameUser == null) {
-			try {
-				gameUser = (GameUser)PMF.executeCommand(new PersistenceCommand() {
-					@Override
-					public Object exec(PersistenceManager pm) {
-						return pm.getObjectById(GameUser.class, gameUserKey);
-					}
-				});
-			}
-			catch(PersistenceCommandException e) {
-				e.printStackTrace();
-				gameUser = null;
-			}			
-		}
+		PersistenceManager pm = JDOHelper.getPersistenceManager(this);
 		
-		return gameUser; 
+		return pm.getObjectById(GameUser.class, this.gameUserKey);
 	}
 	
 	public String getRole() {
 		return role;
 	}
-	
-	public boolean isConnected() {
-		return connected;
-	}
-
-	public void setConnected(boolean connected) {
-		this.connected = connected;
-	}
-	
+		
 	//scriptable object stuff
 	@Override
 	public String getClassName() {
@@ -146,14 +105,16 @@ public class Player implements Scriptable {
 		writer.writeStartElement(ns, "role");
 		writer.writeCharacters(getRole());
 		writer.writeEndElement();
+		writer.writeStartElement(ns, "playerJoin");
+		writer.writeCharacters(Config.getInstance().getDateFormat().format(this.playerJoin));
+		writer.writeEndElement();
+		
 		writer.writeEndElement();
 	}
 	
 	@Override
 	public Object get(String arg0, Scriptable arg1) {
-		if(arg0.equals("connected"))
-			return connected;
-		else if(arg0.equals("game"))
+		if(arg0.equals("game"))
 			return game;
 		else if(arg0.equals("gameUser"))
 			return getGameUser();
@@ -179,7 +140,7 @@ public class Player implements Scriptable {
 
 	@Override
 	public Object[] getIds() {
-		return new Object[] { "connected", "game", "gameUser", "key", "role", "userid" };
+		return new Object[] { "game", "gameUser", "key", "role", "userid" };
 	}
 
 	@Override

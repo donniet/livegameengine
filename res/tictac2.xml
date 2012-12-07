@@ -124,8 +124,15 @@
 </state>
 
 <state id="play">
-	<transition event="board.click" cond="game.findPlayerByRole(board.board.@turn.toString()).userid != _eventdata.player">
+	<transition event="board.click" cond="game.findPlayerByRole(board.board.@turn.toString()).userid != _eventdata.gamens::player">
 		<game:error message="It is not your turn." />
+		<script>
+			log.info("current role: " + board.board.@turn.toString());
+			log.info("current role player: " + game.findPlayerByRole(board.board.@turn.toString()).userid);
+			log.info("_eventdata.player: " + _eventdata.player);
+			log.info("_eventdata.gamens::player: " + _eventdata.gamens::player);
+			log.info("_eventdata: " + _eventdata.toXMLString());
+		</script>
 	</transition>
 
 	<transition event="board.click" cond="parseInt(_eventdata.square.@x) &lt; 0 || parseInt(_eventdata.square.@x) &gt;= 3 || parseInt(_eventdata.square.@y) &lt; 0 || parseInt(_eventdata.square.@y) &gt;= 3">

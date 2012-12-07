@@ -6,6 +6,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.List;
 
+import javax.jdo.JDOHelper;
 import javax.jdo.PersistenceManager;
 import javax.jdo.Query;
 import javax.jdo.annotations.IdGeneratorStrategy;
@@ -20,11 +21,9 @@ import org.mozilla.javascript.ScriptableObject;
 import com.google.appengine.api.datastore.Key;
 import com.google.appengine.api.datastore.KeyFactory;
 import com.livegameengine.persist.PMF;
-import com.livegameengine.persist.PersistenceCommand;
-import com.livegameengine.persist.PersistenceCommandException;
 
 @PersistenceCapable 
-public class Watcher extends ScriptableObject {
+public class Watcher extends ScriptableObject { 
 	private static final long serialVersionUID = 1L;
 
 	@PrimaryKey
@@ -35,101 +34,62 @@ public class Watcher extends ScriptableObject {
 	private String channelkey;
 	
 	@Persistent
-	private Key game;
+	private Key gameKey;
 	
 	@Persistent
-	private Key gameUser;
+	private Key gameUserKey;
 		
 	public Watcher() {}
 	
 	public Watcher(Game gameIn, GameUser gameUserIn) {
-		game = gameIn.getKey();
-		setGameUser(gameUserIn);
+		gameKey = gameIn.getKey();
+		gameUserKey = gameUserIn.getKey();
 		
 		channelkey = hashGameAndGameUser(gameIn, gameUserIn);
 	}
 	
 	public static Watcher findWatcherByChannelKey(final String channelkeyIn) {
-		Watcher ret = null;
+		PersistenceManager pm = PMF.getInstance().getPersistenceManager();
 		
-		try {
-			ret = (Watcher)PMF.executeCommand(new PersistenceCommand() {
-				@Override
-				public Object exec(PersistenceManager pm) {
-					Query q = pm.newQuery(Watcher.class);
-					q.setFilter("channelkey == channelkeyIn");
-					q.declareParameters(String.class.getName() + " channelkeyIn");
-					List<Watcher> results = (List<Watcher>)q.execute(channelkeyIn);
-					
-					if(results.size() > 0) {
-						return results.get(0);
-					}
-					else {
-						return null;
-					}
-				}
-			});
-		}
-		catch(PersistenceCommandException e) {
-			//TODO: handle this exception
-			e.printStackTrace();
-		}
+		Query q = pm.newQuery(Watcher.class);
+		q.setFilter("channelkey == channelkeyIn");
+		q.declareParameters(String.class.getName() + " channelkeyIn");
+		List<Watcher> results = (List<Watcher>)q.execute(channelkeyIn);
 		
-		return ret;
+		if(results.size() > 0) {
+			return results.get(0);
+		}
+		else {
+			return null;
+		}
 	}
 	
 	@SuppressWarnings("unchecked")
 	public static List<Watcher> findWatchersByGame(final Game gameIn) {
-		List<Watcher> ret = null;
+		PersistenceManager pm = PMF.getInstance().getPersistenceManager();
 		
-		try {
-			ret = (List<Watcher>)PMF.executeCommand(new PersistenceCommand() {
-				@Override
-				public Object exec(PersistenceManager pm) {
-					Query q = pm.newQuery(Watcher.class);
-					q.setFilter("game == gameIn");
-					q.declareParameters(Key.class.getName() + " gameIn");
-					List<Watcher> results = (List<Watcher>)q.execute(gameIn.getKey());
-					
-					return results;
-				}
-			});
-		}
-		catch(PersistenceCommandException e) {
-			//TODO: handle this exception
-			e.printStackTrace();
-		}
+		Query q = pm.newQuery(Watcher.class);
+		q.setFilter("gameKey == gameKeyIn");
+		q.declareParameters(Key.class.getName() + " gameKeyIn");
+		List<Watcher> results = (List<Watcher>)q.execute(gameIn.getKey());
 		
-		return ret;
+		return results;
 	}
 	
 	public static Watcher findWatcherByGameAndGameUser(final Game gameIn, final GameUser gameUserIn) {
-		Watcher ret = null;
+		PersistenceManager pm = PMF.getInstance().getPersistenceManager();
 		
-		try {
-			ret = (Watcher)PMF.executeCommand(new PersistenceCommand() {
-				@Override
-				public Object exec(PersistenceManager pm) {
-					Query q = pm.newQuery(Watcher.class);
-					q.setFilter("game == gameIn && gameUser == gameUserKeyIn");
-					q.declareParameters(Key.class.getName() + " gameIn, " + Key.class.getName() + " gameUserKeyIn");
-					List<Watcher> results = (List<Watcher>)q.execute(gameIn.getKey(), gameUserIn.getKey());
-					
-					if(results.size() > 0) {
-						return results.get(0);
-					}
-					else {
-						return null;
-					}
-				}
-			});
-		}
-		catch(PersistenceCommandException e) {
-			//TODO: handle this exception
-			e.printStackTrace();
-		}
+		Query q = pm.newQuery(Watcher.class);
+		q.setFilter("gameKey == gameKeyIn && gameUserKey == gameUserKeyIn");
+		q.declareParameters(Key.class.getName() + " gameKeyIn, " + Key.class.getName() + " gameUserKeyIn");
+		List<Watcher> results = (List<Watcher>)q.execute(gameIn.getKey(), gameUserIn.getKey());
 		
-		return ret;
+		if(results.size() > 0) {
+			return results.get(0);
+		}
+		else {
+			return null;
+		}
 	}
 	
 	public static String hashGameAndGameUser(final Game gameIn, final GameUser gameUserIn) {
@@ -168,58 +128,36 @@ public class Watcher extends ScriptableObject {
 	}
 	
 	public Key getGameUserKey() {
-		return gameUser;
+		return gameUserKey;
 	}
 
 	public GameUser getGameUser() {
-		GameUser ret = null;
+		PersistenceManager pm = JDOHelper.getPersistenceManager(this);
 		
-		try {
-			ret = (GameUser)PMF.executeCommand(new PersistenceCommand() {
-				@Override
-				public Object exec(PersistenceManager pm) {
-					return pm.getObjectById(GameUser.class, gameUser);
-				}
-			});
-		}
-		catch(PersistenceCommandException e) {
-			e.printStackTrace();
-			ret = null;
-		}
-		
-		return ret;
+		return pm.getObjectById(GameUser.class, this.gameUserKey);
 	}
 	
 	public void setGameUser(GameUser gu) {
-		gameUser = gu.getKey();
+		gameUserKey = gu.getKey();
 	}
 	
 	public Key getGameKey() {
-		return game;
+		return gameKey;
 	}
 
 	public void setGame(Game game) {
-		this.game = game.getKey();
+		this.gameKey = game.getKey();
 	}
-	
+	/*
 	public void makePersistent() {
-		final Watcher watcher = this;
-		try {
-			PMF.makePersistent(this);
-			/*
-			PMF.executeCommandInTransaction(new PersistenceCommand() {
-				@Override
-				public Object exec(PersistenceManager pm) {
-					pm.makePersistent(watcher);
-					return null;
-				}
-			});
-			*/
-		}
-		catch(PersistenceCommandException e) {
-			e.printStackTrace();
-		}
+		PersistenceManager pm = JDOHelper.getPersistenceManager(this);
+		
+		if(pm == null) 
+			pm = PMF.getInstance().getPersistenceManager();
+		
+		pm.makePersistent(this);
 	}
+	*/
 
 	@Override
 	public String getClassName() {

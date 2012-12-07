@@ -14,6 +14,26 @@ public class FindPlayerByRoleFunction implements Function {
 	public FindPlayerByRoleFunction(Game g) {
 		game_ = g;
 	}
+	
+	private Player findPlayerByRole(String role) {
+		for(Iterator<Player> i = game_.getPlayers().iterator(); i.hasNext();) {
+			Player p = i.next();
+			
+			if(p.getRole().equals(role)) 
+				return p;
+		}
+		
+		return null;
+	}
+
+	@Override
+	public Object call(Context cx, Scriptable scope, Scriptable thisObj, Object[] args) {
+		if(args.length == 0) 
+			return null;
+		
+		return findPlayerByRole(args[0].toString());
+	}
+	
 
 	@Override
 	public void delete(String arg0) {}
@@ -94,24 +114,6 @@ public class FindPlayerByRoleFunction implements Function {
 		prototype_ = arg0;
 	}
 	
-	private Player findPlayerByRole(String role) {
-		for(Iterator<Player> i = game_.getPlayers().iterator(); i.hasNext();) {
-			Player p = i.next();
-			
-			if(p.getRole().equals(role)) 
-				return p;
-		}
-		
-		return null;
-	}
-
-	@Override
-	public Object call(Context cx, Scriptable scope, Scriptable thisObj, Object[] args) {
-		if(args.length == 0) 
-			return null;
-		
-		return findPlayerByRole(args[0].toString());
-	}
 
 	@Override
 	public Scriptable construct(Context cx, Scriptable scope, Object[] args) {

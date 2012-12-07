@@ -42,11 +42,10 @@ import com.livegameengine.config.Config;
 import com.livegameengine.error.GameLoadException;
 import com.livegameengine.model.Game;
 import com.livegameengine.model.GameState;
+import com.livegameengine.model.GameURIResolver;
 import com.livegameengine.model.GameUser;
 import com.livegameengine.model.Watcher;
 import com.livegameengine.persist.PMF;
-import com.livegameengine.persist.PersistenceCommand;
-import com.livegameengine.persist.PersistenceCommandException;
 import com.sun.org.apache.xerces.internal.dom.DocumentTypeImpl;
 
 public class GameServlet extends HttpServlet {
@@ -108,7 +107,11 @@ public class GameServlet extends HttpServlet {
 					if(req.getMethod().equals("GET")) {
 						resp.setContentType("application/xhtml+xml");
 						Config.getInstance().transformDatamodel(gs, new DOMResult(doc), gu.getHashedUserId());
-						Config.getInstance().transformFromResource("/tictactoe_view2.xslt", new DOMSource(doc), new DOMResult(doc1));
+						
+						Transformer t = Config.getInstance().newTransformer(new StreamSource(GameServlet.class.getResourceAsStream("/tictactoe_view2.xslt")));
+						t.setURIResolver(new GameURIResolver(g));
+						
+						t.transform(new DOMSource(doc), new DOMResult(doc1));
 						
 						Map<String,Object> params = new HashMap<String,Object>();
 						
