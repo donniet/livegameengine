@@ -42,11 +42,14 @@ import com.livegameengine.persist.PMF;
 import com.livegameengine.scxml.js.JsContext;
 import com.livegameengine.scxml.js.JsEvaluator;
 import com.livegameengine.scxml.js.JsFunctionJsonTransformer;
+import com.livegameengine.scxml.model.CompleteGame;
 import com.livegameengine.scxml.model.Error;
 import com.livegameengine.scxml.model.FlagStateAsImportant;
 import com.livegameengine.scxml.model.PlayerJoin;
+import com.livegameengine.scxml.model.SendWatcherEvent;
 import com.livegameengine.scxml.semantics.SCXMLGameSemanticsImpl;
 import com.sun.org.apache.bcel.internal.generic.NEW;
+import com.sun.org.apache.xerces.internal.dom.ElementNSImpl;
 
 import org.mozilla.javascript.Context;
 import org.mozilla.javascript.Function;
@@ -59,6 +62,7 @@ import org.mozilla.javascript.xml.XMLLib;
 import org.mozilla.javascript.xmlimpl.XMLLibImpl;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
 import org.xml.sax.Attributes;
 import org.xml.sax.ContentHandler;
 import org.xml.sax.ErrorHandler;
@@ -110,7 +114,7 @@ import javax.xml.transform.stream.StreamSource;
 
 @PersistenceCapable(detachable = "true")
 //@FetchGroup(name = "GameGroup", members = { @Persistent(name="players") })
-public class Game implements Scriptable, EventDispatcher, SCXMLListener {
+public class Game implements Scriptable, EventDispatcher, SCXMLListener, XmlSerializable {
 	@NotPersistent
 	private Scriptable parent_, prototype_;
 		
@@ -126,6 +130,12 @@ public class Game implements Scriptable, EventDispatcher, SCXMLListener {
 	
 	@Persistent
 	private Date created;
+	
+	@Persistent
+	private Date started;
+	
+	@Persistent
+	private Date completed;
 		
 	@Persistent
 	private Key gameTypeKey;
@@ -197,7 +207,7 @@ public class Game implements Scriptable, EventDispatcher, SCXMLListener {
 	private void init() throws GameLoadException {
 		//GameType gt = getGameType();
 		//InputStream bis = new ByteArrayInputStream(gt.getStateChart());
-		InputStream bis = Game.class.getResourceAsStream("/tictac2.xml");
+		InputStream bis = Game.class.getResourceAsStream("/tictac3.xml");
 		
 		loadWarnings = new ArrayList<Exception>();
 		
@@ -206,6 +216,8 @@ public class Game implements Scriptable, EventDispatcher, SCXMLListener {
 		customActions.add(new CustomAction(Config.getInstance().getGameEngineNamespace(), "success", Error.class));
 		customActions.add(new CustomAction(Config.getInstance().getGameEngineNamespace(), "playerJoin", PlayerJoin.class));
 		customActions.add(new CustomAction(Config.getInstance().getGameEngineNamespace(), "flagStateAsImportant", FlagStateAsImportant.class));
+		customActions.add(new CustomAction(Config.getInstance().getGameEngineNamespace(), "sendWatcherEvent", SendWatcherEvent.class));
+		customActions.add(new CustomAction(Config.getInstance().getGameEngineNamespace(), "completeGame", CompleteGame.class));
 				
 		scxml = null;
 		try {
@@ -354,47 +366,119 @@ public class Game implements Scriptable, EventDispatcher, SCXMLListener {
 		
 		boolean success = false;
 		
-		if(	targetType.equals(Config.getInstance().getGameEventTargetType()) &&
-			target.equals(Config.getInstance().getGameEventTarget())) {
-			if(event.equals("game.playerJoin")) {
-				String playerid = null;
-				GameUser gameUser = null;
-				
-				if(params.get("playerid") != null && params.get("playerid") != "") {
-					playerid = params.get("playerid").toString();
+		if(	targetType.equals(Config.getInstance().getGameEventTargetType())) {
+			if(target.equals(Config.getInstance().getGameEventTarget())) {
+				if(event.equals("game.playerJoin")) {
+					String playerid = null;
+					GameUser gameUser = null;
+					
+					if(params.get("playerid") != null && params.get("playerid") != "") {
+						playerid = params.get("playerid").toString();
+					}
+					else if(currentUser_ != null) {
+						playerid = currentUser_.getHashedUserId();
+						params.put("playerid", playerid);
+					}
+					
+					String role = params.get("role").toString();
+					
+					if(playerid != null) {
+						gameUser = GameUser.findByHashedUserId(playerid);
+					}
+					
+					if(gameUser != null) {
+						Player p = addPlayer(gameUser, role);
+						
+						NodeList nl = null;
+						try {
+							nl = Config.getInstance().serializeToNodeList("player", p);
+						} catch (XMLStreamException e) {
+							// TODO Auto-generated catch block
+							e.printStackTrace();
+						}
+						
+						if(nl != null && nl.getLength() > 0) {
+							content = nl.item(0);
+						}
+						
+						success = true;
+						isError_ = false;
+					}
+					else {
+						isError_ = true;
+						errorMessage_ = "invalid player id, likely a problem with the scxml game rules";
+					}
 				}
-				else if(currentUser_ != null) {
-					playerid = currentUser_.getHashedUserId();
+				else if(event.equals("game.completeGame")) {
+					if(params.containsKey("winner")) {
+						Object o = params.get("winner");
+						
+						if(Player.class.isAssignableFrom(o.getClass())) {
+							Player p = (Player)o;
+							
+							p.setWinner(true);
+							
+							// we can only send strings to the client
+							params.put("winner", p.getGameUser().getHashedUserId());
+							
+							NodeList nl = null;
+							try {
+								nl = Config.getInstance().serializeToNodeList("player", p);
+							} catch (XMLStreamException e) {
+								// TODO Auto-generated catch block
+								e.printStackTrace();
+							}
+							
+							if(nl != null && nl.getLength() > 0) {
+								content = nl.item(0);
+							}
+						}
+						else if(String.class.isAssignableFrom(o.getClass())) {
+							String playerid = (String)o;
+							boolean found = false;
+							for(Iterator<Player> i = getPlayers().iterator(); !found && i.hasNext();) {
+								Player p = i.next();
+								
+								if(playerid.equals(p.getGameUser().getHashedUserId())) {
+									p.setWinner(true);
+									found = true;
+								}
+							}
+							
+							if(!found) {
+								isError_ = true;
+								errorMessage_ = "invalid winner parameter.";
+							}
+						}
+						else {
+							isError_ = true;
+							errorMessage_ = "invalid winner parameter.";
+						}
+					}
+					
+					if(!isError_) { 
+						setCompleted(new Date());
+					}
 				}
-				
-				String role = params.get("role").toString();
-				
-				if(playerid != null) {
-					gameUser = GameUser.findByHashedUserId(playerid);
+				else if(event.equals("game.error")) {
+					errorMessage_ = params.get("message").toString();
+					getLog().error("[error]: " + params.get("message"));
+					isError_ = true;
 				}
-				
-				if(gameUser != null) {
-					addPlayer(gameUser, role);
-					success = true;
+				else if(event.equals("game.success")) {
 					isError_ = false;
 				}
+				else if(event.equals("game.flagStateAsImportant")) {
+					isImportant_ = Boolean.parseBoolean(params.get("important").toString());
+				}
 				else {
-					isError_ = true;
-					errorMessage_ = "invalid player id, likely a problem with the scxml game rules";
+					success = false;
+					isError_ = false;
 				}
 			}
-			else if(event.equals("game.error")) {
-				errorMessage_ = params.get("message").toString();
-				getLog().error("[error]: " + params.get("message"));
-				isError_ = true;
-			}
-			else if(event.equals("game.success")) {
-				isError_ = false;
-			}
-			else if(event.equals("game.flagStateAsImportant")) {
-				isImportant_ = Boolean.parseBoolean(params.get("important").toString());
-			}
-			else {
+			else if(target.equals(Config.getInstance().getWatcherEventTarget())) {
+				event = String.format("board.%s", event);
+				
 				success = true;
 				isError_ = false;
 			}
@@ -429,6 +513,8 @@ public class Game implements Scriptable, EventDispatcher, SCXMLListener {
 		}
 		
 		if(isDirty_ && !isError_) {
+			started = new Date();
+			
 			persistGameState(true);
 			isDirty_ = false;
 			isError_ = false;
@@ -440,10 +526,15 @@ public class Game implements Scriptable, EventDispatcher, SCXMLListener {
 			return false;
 		}
 	}
+
 	public boolean sendPlayerJoinRequest(User user) {
-		isError_ = false;
-		
 		GameUser gu = GameUser.findOrCreateGameUserByUser(user);
+		
+		return sendPlayerJoinRequest(gu);
+	}
+	
+	public boolean sendPlayerJoinRequest(GameUser gu) {
+		isError_ = false;
 		
 		Document doc = Config.getInstance().newXmlDocument();
 		
@@ -504,14 +595,19 @@ public class Game implements Scriptable, EventDispatcher, SCXMLListener {
 		}
 		
 		if(content != null) {
-			
 			Node contentNode = doc.createElement("content");
 			Node contentBody = null;
-			try {
-				contentBody = XMLLibImpl.toDomNode(content);
+						
+			if(Node.class.isAssignableFrom(content.getClass())) {
+				contentBody = (Node)content;
 			}
-			catch(IllegalArgumentException e) {
-				contentBody = null;
+			else {
+				try {
+					contentBody = XMLLibImpl.toDomNode(content);
+				}
+				catch(IllegalArgumentException e) {
+					contentBody = null;
+				}
 			}
 			
 			if(contentBody != null) {
@@ -637,13 +733,15 @@ public class Game implements Scriptable, EventDispatcher, SCXMLListener {
 		}
 		return players;
 	}
-	private void addPlayer(User user, String role) {
+	private Player addPlayer(User user, String role) {
 		GameUser gu = GameUser.findOrCreateGameUserByUser(user);
-		addPlayer(gu, role);
+		return addPlayer(gu, role);		
 	}
-	private void addPlayer(GameUser gameUser, String role) {
+	private Player addPlayer(GameUser gameUser, String role) {
 		Player p = new Player(this, gameUser, role);
 		getPlayers().add(p);
+		
+		return p;
 	}
 
 	public boolean triggerEvent(String eventid, Node node) {
@@ -755,6 +853,13 @@ public class Game implements Scriptable, EventDispatcher, SCXMLListener {
 		this.created = created;
 	}
 	
+	public Date getCompleted() {
+		return completed;
+	}
+	public void setCompleted(Date completed) {
+		this.completed = completed;
+	}
+	
 
     @Override
     public Object getDefaultValue(Class<?> typeHint) {
@@ -781,6 +886,7 @@ public class Game implements Scriptable, EventDispatcher, SCXMLListener {
 		return NOT_FOUND;
 	}
 
+	@Override
 	public void serializeToXml(String elementName, XMLStreamWriter writer) throws XMLStreamException {
 		String ns = Config.getInstance().getGameEngineNamespace();
 		writer.writeStartElement(ns, elementName);
@@ -799,6 +905,12 @@ public class Game implements Scriptable, EventDispatcher, SCXMLListener {
 		writer.writeCharacters(Config.getInstance().getDateFormat().format(getCreated()));
 		writer.writeEndElement();
 		
+		if(getCompleted() != null) {
+			writer.writeStartElement(ns, "completed");
+			writer.writeCharacters(Config.getInstance().getDateFormat().format(getCompleted()));
+			writer.writeEndElement();
+		}
+		
 		//TODO: evaluate if we really need this
 		GameState gs = getMostRecentState();
 		if(gs != null) {
@@ -814,10 +926,25 @@ public class Game implements Scriptable, EventDispatcher, SCXMLListener {
 		writer.writeEndElement();
 	}
 	
+	@Override public void serializeToXml(XMLStreamWriter writer) throws XMLStreamException {
+		serializeToXml(getDefaultLocalName(), writer);
+	}
+	
+	@Override public String getNamespaceUri() {
+		return Config.getInstance().getGameEngineNamespace();
+	}
+	
+	@Override public String getDefaultLocalName() {
+		return "game";
+	}
+	
+	
 	@Override
 	public Object get(String name, Scriptable start) {
 		//TODO: make this more gracefull/efficient
-		if(name.equals("created"))
+		if(name.equals("completed"))
+			return this.getCompleted();
+		else if(name.equals("created"))
         	return this.getCreated();
         else if (name.equals("currentTime"))
             return this.getCurrentTime();
@@ -850,6 +977,7 @@ public class Game implements Scriptable, EventDispatcher, SCXMLListener {
 	@Override
 	public Object[] getIds() {
 		return new Object[] {
+			"completed",
 			"created",
 			"currentStates",
 			"currentTime",

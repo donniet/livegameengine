@@ -32,7 +32,7 @@ import com.google.appengine.api.users.User;
 import com.livegameengine.persist.PMF;
 
 @PersistenceCapable 
-public class GameUser implements Scriptable {
+public class GameUser implements Scriptable, XmlSerializable {
 	private static final long serialVersionUID = 4649802893267737141L;
 	
 	private static final String LOCAL_NAME = "gameUser";
@@ -134,6 +134,7 @@ public class GameUser implements Scriptable {
 		// not implemented
 	}
 	
+	@Override
 	public void serializeToXml(String elementName, XMLStreamWriter writer) throws XMLStreamException {
 		String ns = Config.getInstance().getGameEngineNamespace();
 		
@@ -152,6 +153,18 @@ public class GameUser implements Scriptable {
 				writer.writeCharacters(Boolean.toString(isConnected()));
 			writer.writeEndElement();
 		writer.writeEndElement();
+	}
+	
+	@Override public void serializeToXml(XMLStreamWriter writer) throws XMLStreamException {
+		serializeToXml(getDefaultLocalName(), writer);
+	}
+	
+	@Override public String getNamespaceUri() {
+		return Config.getInstance().getGameEngineNamespace();
+	}
+	
+	@Override public String getDefaultLocalName() {
+		return "gameUser";
 	}
 
 	@Override

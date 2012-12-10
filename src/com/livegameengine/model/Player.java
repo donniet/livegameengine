@@ -29,7 +29,7 @@ import com.livegameengine.config.Config;
 import com.livegameengine.persist.PMF;
 
 @PersistenceCapable
-public class Player implements Scriptable {
+public class Player implements Scriptable, XmlSerializable {
 	private static final long serialVersionUID = 1;
 	
 	@NotPersistent private Scriptable prototype_, parent_;
@@ -48,6 +48,9 @@ public class Player implements Scriptable {
 	private Date playerJoin;
 	
 	@Persistent
+	private boolean winner;
+	
+	@Persistent
 	private String role;
 	
 	public Player() {} 
@@ -57,15 +60,18 @@ public class Player implements Scriptable {
 		this.gameUserKey = gameUser.getKey();
 		this.role = role;
 		this.playerJoin = new Date();
+		this.winner = false;
 	}
 	protected Player(Game game, GameUser gameUser, String role, Date playerJoin) {
 		this.game = game;
 		this.gameUserKey = gameUser.getKey();
 		this.role = role;
 		this.playerJoin = playerJoin;
+		this.winner = false;
 	}
 		
 	public Key getKey() { return key; }
+	public Key getGameUserKey() { return gameUserKey; }
 	public GameUser getGameUser() {
 		PersistenceManager pm = JDOHelper.getPersistenceManager(this);
 		
@@ -74,6 +80,12 @@ public class Player implements Scriptable {
 	
 	public String getRole() {
 		return role;
+	}
+	public boolean getWinner() {
+		return winner;
+	}
+	public void setWinner(boolean val) {
+		winner = val;
 	}
 		
 	//scriptable object stuff
@@ -96,12 +108,16 @@ public class Player implements Scriptable {
 	@Override
 	public void delete(int arg0) {}
 
+	@Override
 	public void serializeToXml(String elementName, XMLStreamWriter writer) throws XMLStreamException {
 		String ns = Config.getInstance().getGameEngineNamespace();
 		
 		writer.writeStartElement(ns, elementName);
 		writer.writeAttribute("key", KeyFactory.keyToString(getKey()));
 		getGameUser().serializeToXml("gameUser", writer);
+		writer.writeStartElement(ns, "winner");
+		writer.writeCharacters(Boolean.toString(winner));
+		writer.writeEndElement();
 		writer.writeStartElement(ns, "role");
 		writer.writeCharacters(getRole());
 		writer.writeEndElement();
@@ -110,6 +126,18 @@ public class Player implements Scriptable {
 		writer.writeEndElement();
 		
 		writer.writeEndElement();
+	}
+	
+	@Override public void serializeToXml(XMLStreamWriter writer) throws XMLStreamException {
+		serializeToXml(getDefaultLocalName(), writer);
+	}
+	
+	@Override public String getNamespaceUri() {
+		return Config.getInstance().getGameEngineNamespace();
+	}
+	
+	@Override public String getDefaultLocalName() {
+		return "player";
 	}
 	
 	@Override
@@ -124,6 +152,8 @@ public class Player implements Scriptable {
 			return getRole();
 		else if(arg0.equals("userid"))
 			return getGameUser().getHashedUserId();
+		else if(arg0.equals("winner"))
+			return getWinner();
 		
 		return NOT_FOUND;
 	}
@@ -140,7 +170,7 @@ public class Player implements Scriptable {
 
 	@Override
 	public Object[] getIds() {
-		return new Object[] { "game", "gameUser", "key", "role", "userid" };
+		return new Object[] { "game", "gameUser", "key", "role", "userid", "winner" };
 	}
 
 	@Override
@@ -178,7 +208,20 @@ public class Player implements Scriptable {
 	}
 
 	@Override
-	public void put(String arg0, Scriptable arg1, Object arg2) {}
+	public void put(String arg0, Scriptable arg1, Object arg2) {
+		if(arg0.equals("winner")) {
+			if(arg2 == null) {
+				setWinner(false);
+			}
+			else if(Boolean.class.isAssignableFrom(arg2.getClass())) {
+				setWinner((Boolean)arg2);
+			}
+			else {
+				setWinner(false);
+			}
+		}
+			
+	}
 
 	@Override
 	public void put(int arg0, Scriptable arg1, Object arg2) {}

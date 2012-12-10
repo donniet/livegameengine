@@ -21,6 +21,50 @@
 					td { width: 100px; height: 100px; border: solid 1px black; }
 					.highlight { background-color: rgb(50,50,255); }
 				</view:styles>
+				<view:scripts><![CDATA[
+					function updateConnectedStatus(meta) {
+						console.log("loading players: " + meta.players.length);
+						
+						for(var i = 0; i < meta.players.length; i++) {							
+							var p = meta.players[i];
+							
+							console.log("player: " + p.gameUser.key);
+							
+							var el = document.getElementById("connected-" + p.gameUser.key);
+							console.log("element: " + el);
+							if(!el) continue;
+							
+							el.appendChild(document.createTextNode(p.gameUser.connected ? "connected" : "disconnected"));
+							
+						}
+					}
+				
+					Event.addListener(View.getInstance(), "load", function() {
+						console.log("view loaded...");
+						
+						var resp = Meta.loadMeta();
+						
+						Event.addListener(resp, "load", function(meta) {
+							console.log("loaded meta: " + meta.key);
+							
+							updateConnectedStatus(meta);
+						});
+					});
+					
+					Event.addListener(View.getInstance(), "game.playerConnectionChange", function(event) {
+						var player = event.params_["player"];
+						var connected = (event.params_["connected"] == "true");
+						
+						var el = document.getElementById("connected-" + player);
+						console.log("element: " + el);
+						if(!el) return;
+						
+						emptyNode(el);
+						
+						el.appendChild(document.createTextNode(connected ? "connected" : "disconnected"));
+						
+					});
+				]]></view:scripts>
 			</view:meta>
 			<view:body>
 				<input type="button" value="Start">
@@ -44,7 +88,7 @@
 	</xsl:template>
 	
 	<xsl:template match="game:player">
-		<li><xsl:value-of select="game:gameUser/game:nickname" /> : <xsl:value-of select="game:role" /></li>
+		<li><span id="connected-{game:gameUser/@key}"></span><xsl:value-of select="game:gameUser/game:nickname" /> : <xsl:value-of select="game:role" /></li>
 	</xsl:template>
 	
 	<xsl:template match="tic:board">

@@ -53,7 +53,7 @@ import com.livegameengine.persist.PMF;
 import com.livegameengine.scxml.js.JsContext;
 
 @PersistenceCapable(detachable="true")
-public class GameState implements Scriptable { 
+public class GameState implements Scriptable, XmlSerializable { 
 	private static final long serialVersionUID = 1;
 	
 	@NotPersistent private Scriptable parent_, prototype_;
@@ -205,6 +205,7 @@ public class GameState implements Scriptable {
 	@Override
 	public void delete(int arg0) {}
 
+	@Override
 	public void serializeToXml(String elementName, XMLStreamWriter writer) throws XMLStreamException {
 		String ns = Config.getInstance().getGameEngineNamespace();
 		
@@ -231,6 +232,18 @@ public class GameState implements Scriptable {
 		}
 		
 		writer.writeEndElement();
+	}
+	
+	@Override public void serializeToXml(XMLStreamWriter writer) throws XMLStreamException {
+		serializeToXml(getDefaultLocalName(), writer);
+	}
+	
+	@Override public String getNamespaceUri() {
+		return Config.getInstance().getGameEngineNamespace();
+	}
+	
+	@Override public String getDefaultLocalName() {
+		return "gameState";
 	}
 	
 	@Override

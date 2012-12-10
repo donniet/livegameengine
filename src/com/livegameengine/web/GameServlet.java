@@ -3,6 +3,7 @@ package com.livegameengine.web;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -44,6 +45,7 @@ import com.livegameengine.model.Game;
 import com.livegameengine.model.GameState;
 import com.livegameengine.model.GameURIResolver;
 import com.livegameengine.model.GameUser;
+import com.livegameengine.model.Player;
 import com.livegameengine.model.Watcher;
 import com.livegameengine.persist.PMF;
 import com.sun.org.apache.xerces.internal.dom.DocumentTypeImpl;
@@ -108,7 +110,7 @@ public class GameServlet extends HttpServlet {
 						resp.setContentType("application/xhtml+xml");
 						Config.getInstance().transformDatamodel(gs, new DOMResult(doc), gu.getHashedUserId());
 						
-						Transformer t = Config.getInstance().newTransformer(new StreamSource(GameServlet.class.getResourceAsStream("/tictactoe_view2.xslt")));
+						Transformer t = Config.getInstance().newTransformer(new StreamSource(GameServlet.class.getResourceAsStream("/tictactoe_view3.xslt")));
 						t.setURIResolver(new GameURIResolver(g));
 						
 						t.transform(new DOMSource(doc), new DOMResult(doc1));
@@ -123,7 +125,9 @@ public class GameServlet extends HttpServlet {
 						params.put("jsapiUrl", "/_ah/channel/jsapi");
 						//params.put("userToken")
 						
-						Watcher w = Watcher.findWatcherByGameAndGameUser(g, gu);
+						Watcher w = g.addWatcher(u);
+						
+						//Watcher w = Watcher.findWatcherByGameAndGameUser(g, gu);
 						if(w != null && w.getChannelkey() != null && !w.getChannelkey().equals("")) {
 							ChannelService channelService = ChannelServiceFactory.getChannelService();
 							String token = channelService.createChannel(w.getChannelkey());
@@ -174,7 +178,7 @@ public class GameServlet extends HttpServlet {
 					if(req.getMethod().equals("GET")) {
 						resp.setContentType("text/xml");
 						Config.getInstance().transformDatamodel(gs, new DOMResult(doc), "");
-						Config.getInstance().transformFromResource("/tictactoe_view2.xslt", new DOMSource(doc), responseResult);
+						Config.getInstance().transformFromResource("/tictactoe_view3.xslt", new DOMSource(doc), responseResult);
 					}
 					else {
 						resp.setStatus(405);
@@ -182,6 +186,11 @@ public class GameServlet extends HttpServlet {
 				}
 				else if(m.group(2).equals("start")) {
 					if(req.getMethod().equals("POST")) {
+						if(u == null) {
+							resp.setStatus(403);
+							return;
+						}
+						
 						boolean success = g.sendStartGameRequest(u); 
 
 						if(!success) {
@@ -196,12 +205,17 @@ public class GameServlet extends HttpServlet {
 				}
 				else if(m.group(2).equals("join")) {
 					if(req.getMethod().equals("POST")) {
-						boolean success = g.sendPlayerJoinRequest(u); 
+						if(u == null) {
+							resp.setStatus(403);
+							return;
+						}
+						
+						boolean success = g.sendPlayerJoinRequest(gu); 
 
 						if(!success) {
 							resp.setStatus(400);
 						}
-						else {
+						else {							
 							resp.setStatus(200);
 						}
 					}
@@ -209,6 +223,11 @@ public class GameServlet extends HttpServlet {
 				}
 				else if(m.group(2).startsWith("event")) {
 					if(req.getMethod() == "POST") {
+						if(u == null) {
+							resp.setStatus(403);
+							return;
+						}
+						
 						String eventName = "board." + m.group(4);
 						
 						Node data = doc.createElementNS(Config.getInstance().getGameEngineNamespace(), "data");

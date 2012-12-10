@@ -14,7 +14,9 @@ import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.util.Collection;
 import java.util.GregorianCalendar;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -28,9 +30,13 @@ import javax.crypto.NoSuchPaddingException;
 import javax.crypto.ShortBufferException;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
+import javax.xml.namespace.NamespaceContext;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.stream.XMLOutputFactory;
+import javax.xml.stream.XMLStreamException;
+import javax.xml.stream.XMLStreamWriter;
 import javax.xml.transform.Result;
 import javax.xml.transform.Source;
 import javax.xml.transform.Transformer;
@@ -42,16 +48,22 @@ import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamSource;
 
 import org.apache.commons.codec.binary.Base64;
+import org.apache.commons.collections.IteratorUtils;
+import org.apache.commons.collections.MultiHashMap;
+import org.apache.commons.collections.MultiMap;
+import org.w3c.dom.DOMImplementation;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
 
 import com.livegameengine.model.Game;
 import com.livegameengine.model.GameState;
 import com.livegameengine.model.GameStateData;
+import com.livegameengine.model.XmlSerializable;
 
 import flexjson.transformer.DateTransformer;
 
-public class Config {
+public class Config implements NamespaceContext {
 	private static Config instance_ = null;
 	
 	private Properties props_ = null;
@@ -64,9 +76,11 @@ public class Config {
 	private String encryptionAlgorithm_ = null;
 	private byte[] privateKey_ = new byte[] {0x0};
 	private byte[] initializationVector_ = new byte[] {0x0};
+	private String gameEngineDefaultNamespacePrefix_ = "";
 	private String gameEngineNamespace_ = "";
 	private String gameEventTargetType_;
 	private String gameEventTarget_;
+	private String watcherEventTarget_;
 	private String gameViewNamespace_ = "";
 	private String scxmlNamespace_ = "";
 	private int maxScriptRuntime_ = 1;
@@ -81,6 +95,9 @@ public class Config {
 	private String viewDoctypeSystem_ = null;
 	private String viewDoctypePublic_ = null;
 	
+	private MultiMap aliasMap_ = null;
+	private Map<String,String> namespaceMap_ = null;
+	
 	public static Config getInstance() {
 		if(instance_ == null) {
 			instance_ = new Config();
@@ -90,6 +107,9 @@ public class Config {
 	
 	private Config() {
 		props_ = new Properties();
+		
+		aliasMap_ = new MultiHashMap();
+		namespaceMap_ = new HashMap<String,String>();
 		 
 		try {
 			props_.load(Config.class.getResourceAsStream("/app.properties"));
@@ -105,10 +125,23 @@ public class Config {
 			initializationVector_ = props_.getProperty("initializationVector").getBytes(encoding_);
 			
 			gameEngineNamespace_ = props_.getProperty("gameenginenamespace");
+			gameEngineDefaultNamespacePrefix_ = props_.getProperty("gameenginedefaultprefix");
 			gameEventTargetType_ = props_.getProperty("gameeventtargettype");
 			gameEventTarget_ = props_.getProperty("gameeventtarget");
+			watcherEventTarget_ = props_.getProperty("watchereventtarget");
 			gameViewNamespace_ = props_.getProperty("gameviewnamespace");
 			scxmlNamespace_ = props_.getProperty("scxmlnamespace");
+			
+			aliasMap_.put(gameEngineNamespace_, gameEngineDefaultNamespacePrefix_);
+			aliasMap_.put(gameEngineNamespace_, "");
+			namespaceMap_.put(gameEngineDefaultNamespacePrefix_, gameEngineNamespace_);
+			namespaceMap_.put("", gameEngineNamespace_);
+			
+			aliasMap_.put(scxmlNamespace_, "scxml");
+			namespaceMap_.put("scxml", scxmlNamespace_);
+			
+			aliasMap_.put(gameViewNamespace_, "view");
+			namespaceMap_.put("view", gameViewNamespace_);
 			
 			maxScriptRuntime_ = Integer.parseInt(props_.getProperty("maxScriptRuntime"));
 			
@@ -172,6 +205,9 @@ public class Config {
 	public byte[] getInitializationVector() {
 		return initializationVector_;
 	}
+	public String getGameEngineDefaultNamespacePrefix() {
+		return gameEngineDefaultNamespacePrefix_;
+	}
 	public String getGameEngineNamespace() { 
 		return gameEngineNamespace_;
 	}
@@ -180,6 +216,9 @@ public class Config {
 	}
 	public String getGameEventTarget() {
 		return gameEventTarget_;
+	}
+	public String getWatcherEventTarget() {
+		return watcherEventTarget_;
 	}
 	public String getGameViewNamespace() {
 		return gameViewNamespace_;
@@ -319,6 +358,61 @@ public class Config {
 	
 	public DocumentBuilder getDocumentBuilder() {
 		return documentBuilder_;
+	}
+	
+	@Override
+	public Iterator getPrefixes(String namespaceURI) {
+		Collection prefixes = (Collection)aliasMap_.get(namespaceURI);
+		
+		if(prefixes != null) {
+			return prefixes.iterator();
+		}
+		else {
+			return IteratorUtils.EMPTY_ITERATOR;
+		}
+	}
+	
+	@Override
+	public String getPrefix(String namespaceURI) {
+		Collection prefixes = (Collection)aliasMap_.get(namespaceURI);
+		
+		if(prefixes == null || prefixes.isEmpty()) {
+			return null;
+		}
+		else {
+			return (String)prefixes.iterator().next();
+		}
+	}
+	
+	@Override
+	public String getNamespaceURI(String prefix) {
+		return namespaceMap_.get(prefix);
+	}
+	
+	public NodeList serializeToNodeList(String localName, XmlSerializable obj, Node parent) throws XMLStreamException {
+		XMLOutputFactory factory = XMLOutputFactory.newFactory();
+	    //factory.setProperty("javax.xml.stream.isPrefixDefaulting",Boolean.TRUE);
+				
+		XMLStreamWriter writer = factory.createXMLStreamWriter(new DOMResult(parent));
+
+		//writer.setNamespaceContext(this);
+		
+		writer.setDefaultNamespace(obj.getNamespaceUri());
+		writer.setPrefix(getGameEngineDefaultNamespacePrefix(), getGameEngineNamespace());		
+		
+		obj.serializeToXml(localName, writer);
+		
+		return parent.getChildNodes();
+	}
+	
+	public NodeList serializeToNodeList(String localName, XmlSerializable obj) throws XMLStreamException {
+		Document doc = newXmlDocument();
+				
+		return serializeToNodeList(localName,  obj, doc);
+	}
+	
+	public NodeList serializeToNodeList(XmlSerializable obj) throws XMLStreamException {
+		return serializeToNodeList(obj.getDefaultLocalName(), obj);
 	}
 
 	public Transformer newTransformer() throws TransformerConfigurationException {

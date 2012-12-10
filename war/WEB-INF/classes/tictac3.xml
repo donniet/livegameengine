@@ -89,7 +89,10 @@
 				}
 				return winner;
 			}
-			else if(boardFull) return "C";
+			else if(boardFull) {
+				board.board.row.col.@highlight = "true";
+				return "C";
+			}
 			else return null;			
 		}
 	//]]></script>
@@ -124,21 +127,36 @@
 </state>
 
 <state id="play">
-	<transition event="board.click" cond="game.findPlayerByRole(board.board.@turn.toString()).userid != _eventdata.player">
+	<transition event="board.click" cond="game.findPlayerByRole(board.board.@turn.toString()).userid != _eventdata.gamens::player">
 		<game:error message="It is not your turn." />
+		<script>
+			log.info("current role: " + board.board.@turn.toString());
+			log.info("current role player: " + game.findPlayerByRole(board.board.@turn.toString()).userid);
+			log.info("_eventdata.player: " + _eventdata.player);
+			log.info("_eventdata.gamens::player: " + _eventdata.gamens::player);
+			log.info("_eventdata: " + _eventdata.toXMLString());
+		</script>
 	</transition>
 
-	<transition event="board.click" cond="parseInt(_eventdata.square.@x) < 0 || parseInt(_eventdata.square.@x) >= 3 || parseInt(_eventdata.square.@y) < 0 || parseInt(_eventdata.square.@y) >= 3">
+	<transition event="board.click" cond="parseInt(_eventdata.square.@x) &lt; 0 || parseInt(_eventdata.square.@x) &gt;= 3 || parseInt(_eventdata.square.@y) &lt; 0 || parseInt(_eventdata.square.@y) &gt;= 3">
 		<game:error message="click not on the board" />
 	</transition>
 	
-	<transition event="board.click" cond="board.board.row[parseInt(_eventdata.square.@y)].col[parseInt(_eventdata.square.@x)].mark.length() > 0">
+	<transition event="board.click" cond="board.board.row[parseInt(_eventdata.square.@y)].col[parseInt(_eventdata.square.@x)].mark.length() &gt; 0">
 		<game:error message="that square already has a mark" />
 	</transition>
 	
 	<transition event="board.click" target="check_complete">
 		<script><![CDATA[
 			board.board.row[parseInt(_eventdata.square.@y)].col[parseInt(_eventdata.square.@x)].appendChild(<mark player={board.board.@turn} />);
+			
+		]]></script>
+		<game:sendWatcherEvent event="'placement'">
+			<param name="role" expr="board.board.@turn" />
+			<param name="x" expr="_eventdata.square.@x" />
+			<param name="y" expr="_eventdata.square.@y" />
+		</game:sendWatcherEvent>
+		<script><![CDATA[
 			if(board.board.@turn == "X")
 				board.board.@turn = "O";
 			else
@@ -149,9 +167,10 @@
 
 <state id="check_complete">
 	<transition cond="getWinner() != null" target="complete">
-		<script><![CDATA[
+		<script>//<![CDATA[
 			board.board.@winner = getWinner();
-		]]></script>
+		//]]></script>
+		<game:completeGame winnerExpr="game.findPlayerByRole(board.board.@winner)" />
 	</transition>
 	<transition cond="getWinner() == null" target="play" />
 </state>

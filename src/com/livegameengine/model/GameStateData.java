@@ -23,7 +23,7 @@ import com.google.appengine.api.datastore.KeyFactory;
 import com.google.appengine.api.datastore.Text;
 
 @PersistenceCapable
-public class GameStateData implements Scriptable { 
+public class GameStateData implements Scriptable, XmlSerializable { 
 	private static final long serialVersionUID = 1;
 	
 	@NotPersistent private Scriptable parent_, prototype_;
@@ -91,6 +91,7 @@ public class GameStateData implements Scriptable {
 	@Override
 	public void delete(int arg0) {}
 	
+	@Override
 	public void serializeToXml(String elementName, XMLStreamWriter writer) throws XMLStreamException {
 		String ns = Config.getInstance().getGameEngineNamespace();
 		
@@ -102,6 +103,18 @@ public class GameStateData implements Scriptable {
 		writer.writeEndElement();
 		
 		writer.writeEndElement();
+	}
+	
+	@Override public void serializeToXml(XMLStreamWriter writer) throws XMLStreamException {
+		serializeToXml(getDefaultLocalName(), writer);
+	}
+	
+	@Override public String getNamespaceUri() {
+		return Config.getInstance().getGameEngineNamespace();
+	}
+	
+	@Override public String getDefaultLocalName() {
+		return "data";
 	}
 	
 	@Override

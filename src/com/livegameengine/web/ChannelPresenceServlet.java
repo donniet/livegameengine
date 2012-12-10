@@ -1,8 +1,10 @@
 package com.livegameengine.web;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 
 import javax.jdo.JDOHelper;
 import javax.jdo.ObjectState;
@@ -18,8 +20,11 @@ import com.google.appengine.api.datastore.KeyFactory;
 import com.google.appengine.api.users.User;
 import com.google.appengine.api.users.UserService;
 import com.google.appengine.api.users.UserServiceFactory;
+import com.livegameengine.model.Game;
 import com.livegameengine.model.GameUser;
+import com.livegameengine.model.Player;
 import com.livegameengine.model.Watcher;
+import com.livegameengine.persist.PMF;
 
 public class ChannelPresenceServlet extends HttpServlet {
 	public void doPost(HttpServletRequest req, HttpServletResponse resp) throws IOException {
@@ -37,10 +42,34 @@ public class ChannelPresenceServlet extends HttpServlet {
 		
 		GameUser gu = w.getGameUser();
 		
-		gu.setConnected(presence.isConnected());
-
-		pm = JDOHelper.getPersistenceManager(gu);
-		pm.makePersistent(gu);
+		if(gu.isConnected() != presence.isConnected()) {
+			gu.setConnected(presence.isConnected());
+	
+			pm = JDOHelper.getPersistenceManager(gu);
+			pm.makePersistent(gu);
+			
+			Game g = Game.findUninitializedGameByKey(w.getGameKey());
+			
+			boolean playerConnectedChange = false;
+			
+			List<Player> players = g.getPlayers();
+			for(Iterator<Player> i = players.iterator(); i.hasNext();) {
+				Player p = i.next();
+				
+				if(p.getGameUserKey().equals(gu.getKey())) {
+					playerConnectedChange = true;
+					break;
+				}
+			}
+			
+			if(playerConnectedChange) {
+				Map<String,String> params = new HashMap<String,String>();
+				params.put("player", gu.getHashedUserId());
+				params.put("connected", Boolean.toString(presence.isConnected()));
+				
+				g.sendWatcherMessage("game.playerConnectionChange", params, null);
+			}
+		}
 		
 		if(!presence.isConnected()) {
 			pm = JDOHelper.getPersistenceManager(w);
