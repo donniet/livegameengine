@@ -43,6 +43,7 @@ import com.livegameengine.config.Config;
 import com.livegameengine.error.GameLoadException;
 import com.livegameengine.model.Game;
 import com.livegameengine.model.GameState;
+import com.livegameengine.model.GameType;
 import com.livegameengine.model.GameURIResolver;
 import com.livegameengine.model.GameUser;
 import com.livegameengine.model.Player;
@@ -117,12 +118,15 @@ public class GameServlet extends HttpServlet {
 						
 						Map<String,Object> params = new HashMap<String,Object>();
 						
+						GameType gt = g.getGameType();
+						
 						params.put("eventEndpointUrl", "event/{endpointEvent}");
 						params.put("startEndpointUrl", "start");
 						params.put("joinEndpointUrl", "join");
 						params.put("doctype-public", Config.getInstance().getViewDoctypePublic());
 						params.put("doctype-system", Config.getInstance().getViewDoctypeSystem());
 						params.put("jsapiUrl", "/_ah/channel/jsapi");
+						params.put("version", gt.getClientVersion());
 						//params.put("userToken")
 						
 						Watcher w = g.addWatcher(u);
