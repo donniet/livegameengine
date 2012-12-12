@@ -110,7 +110,7 @@ public class GameServlet extends HttpServlet {
 						resp.setContentType("application/xhtml+xml");
 						Config.getInstance().transformDatamodel(gs, new DOMResult(doc), gu.getHashedUserId());
 						
-						Transformer t = Config.getInstance().newTransformer(new StreamSource(GameServlet.class.getResourceAsStream("/tictactoe_view3.xslt")));
+						Transformer t = Config.getInstance().newTransformer(new StreamSource(GameServlet.class.getResourceAsStream("/tictactoe_view4.xslt")));
 						t.setURIResolver(new GameURIResolver(g));
 						
 						t.transform(new DOMSource(doc), new DOMResult(doc1));
@@ -178,7 +178,7 @@ public class GameServlet extends HttpServlet {
 					if(req.getMethod().equals("GET")) {
 						resp.setContentType("text/xml");
 						Config.getInstance().transformDatamodel(gs, new DOMResult(doc), "");
-						Config.getInstance().transformFromResource("/tictactoe_view3.xslt", new DOMSource(doc), responseResult);
+						Config.getInstance().transformFromResource("/tictactoe_view4.xslt", new DOMSource(doc), responseResult);
 					}
 					else {
 						resp.setStatus(405);

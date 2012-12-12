@@ -88,7 +88,7 @@ public class GameTypeServlet extends HttpServlet {
 			t.setCreator(gu);
 			t.setDescription("Test");
 			t.setTypeName("Test");
-			t.setClientVersion("0.1");
+			t.setClientVersion("0.2");
 							
 			URL u = GameServlet.class.getResource("/tictac.xml");
 			URLConnection conn = u.openConnection();

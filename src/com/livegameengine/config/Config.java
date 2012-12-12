@@ -37,6 +37,7 @@ import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.stream.XMLOutputFactory;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
+import javax.xml.transform.OutputKeys;
 import javax.xml.transform.Result;
 import javax.xml.transform.Source;
 import javax.xml.transform.Transformer;
@@ -465,6 +466,8 @@ public class Config implements NamespaceContext {
 		if(trans == null) {
 			throw new TransformerException("transformer not valid");
 		}
+		
+		trans.setOutputProperty(OutputKeys.INDENT, "yes");
 		
 		if(params != null) {
 			for(Iterator<String> i = params.keySet().iterator(); i.hasNext();) {

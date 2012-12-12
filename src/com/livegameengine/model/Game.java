@@ -919,6 +919,9 @@ public class Game implements Scriptable, EventDispatcher, SCXMLListener, XmlSeri
 		
 		getOwner().serializeToXml("owner", writer);
 		
+		GameType gt = getGameType();
+		gt.serializeToXml("gameType", writer);
+		
 		writer.writeStartElement(ns, "gameTypeKey");
 		writer.writeCharacters(KeyFactory.keyToString(gameTypeKey));
 		writer.writeEndElement();

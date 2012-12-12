@@ -142,6 +142,9 @@ public class GameType implements Scriptable, XmlSerializable {
 		writer.writeStartElement(ns, "typeName");
 		writer.writeCharacters(getTypeName());
 		writer.writeEndElement();
+		writer.writeStartElement("clientVersion");
+		writer.writeCharacters(getClientVersion());
+		writer.writeEndElement();
 		
 		writer.writeEndElement();
 	}
