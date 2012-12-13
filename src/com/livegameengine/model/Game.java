@@ -574,20 +574,21 @@ public class Game implements Scriptable, EventDispatcher, SCXMLListener, XmlSeri
 		
 	public void sendWatcherMessage(String event, Map params, Object content) {
 		Document doc = Config.getInstance().newXmlDocument();
+		String ns = Config.getInstance().getGameEngineNamespace();
 		
-		Node eventNode = doc.createElement("event");
-		Node eventName = doc.createAttribute("name");
+		Node eventNode = doc.createElementNS(ns, "event");
+		Node eventName = doc.createAttributeNS(ns, "name");
 		eventName.setNodeValue(event);
-		eventNode.getAttributes().setNamedItem(eventName);
+		eventNode.getAttributes().setNamedItemNS(eventName);
 		
 		Set paramsKeys = params.keySet();
 		for(Iterator i = paramsKeys.iterator(); i.hasNext(); ) {
 			String paramName = (String)i.next();
 			
-			Node paramNode = doc.createElement("param");
-			Node paramNameNode = doc.createAttribute("name");
+			Node paramNode = doc.createElementNS(ns, "param");
+			Node paramNameNode = doc.createAttributeNS(ns, "name");
 			paramNameNode.setNodeValue(paramName);
-			paramNode.getAttributes().setNamedItem(paramNameNode);
+			paramNode.getAttributes().setNamedItemNS(paramNameNode);
 			
 			paramNode.setTextContent(params.get(paramName).toString());
 			
@@ -595,7 +596,7 @@ public class Game implements Scriptable, EventDispatcher, SCXMLListener, XmlSeri
 		}
 		
 		if(content != null) {
-			Node contentNode = doc.createElement("content");
+			Node contentNode = doc.createElementNS(ns, "content");
 			Node contentBody = null;
 						
 			if(Node.class.isAssignableFrom(content.getClass())) {
@@ -944,7 +945,7 @@ public class Game implements Scriptable, EventDispatcher, SCXMLListener, XmlSeri
 	
 	@Override
 	public Object get(String name, Scriptable start) {
-		//TODO: make this more gracefull/efficient
+		//TODO: make this more graceful/efficient
 		if(name.equals("completed"))
 			return this.getCompleted();
 		else if(name.equals("created"))

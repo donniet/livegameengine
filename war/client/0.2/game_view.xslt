@@ -47,10 +47,11 @@
 </xsl:text>
 	</xsl:template>
 	
-	<xsl:template match="/">
+	<xsl:template match="/html:html">
 		<xsl:call-template name="write-doctype" />
-		
-		<xsl:apply-templates select="*|text()" />
+		<xsl:copy>
+			<xsl:apply-templates select="@*|*|text()" />
+		</xsl:copy>
 	</xsl:template>
 	
 	<xsl:template match="html:title">
@@ -63,7 +64,7 @@
 		<xsl:copy>
 			<script type="text/javascript" src="/client/{$version}/view.js"></script>
 			<script type="text/javascript">
-				View.wireEventHandlers([<xsl:for-each select="//view:eventHandler">
+				View.registerEventHandlers([<xsl:for-each select="//view:eventHandler">
 						{ "elementId": "<xsl:call-template name="create-template-parent-id" />", "templateId": "<xsl:call-template name="create-template-id" />" },</xsl:for-each>
 				]);
 			</script>
@@ -80,20 +81,7 @@
 		</xsl:copy>
 	</xsl:template>
 	
-	<xsl:template name="create-template-id">
-		<xsl:value-of select="concat('temp-',generate-id(.))" />
-	</xsl:template>
 	
-	<xsl:template name="create-template-parent-id">
-		<xsl:choose>
-			<xsl:when test="string-length(../@id) > 0">
-				<xsl:value-of select="../@id" />
-			</xsl:when>
-			<xsl:otherwise>
-				<xsl:value-of select="generate-id(..)" />
-			</xsl:otherwise>
-		</xsl:choose>
-	</xsl:template>
 	
 	<xsl:template match="view:eventHandler" mode="header">
 		<sxsl:stylesheet version="2.0">
@@ -101,22 +89,12 @@
 			<xsl:for-each select="view:parameter">
 				<sxsl:param name="{@name}" />
 			</xsl:for-each>
-			
+						
 			<xsl:for-each select="view:template">
-				<sxsl:template>
-					<xsl:choose>
-						<xsl:when test="string-length(@match) > 0">
-							<xsl:attribute name="match"><xsl:value-of select="@match" /></xsl:attribute>
-						</xsl:when>
-						<xsl:otherwise>
-							<xsl:attribute name="match">/</xsl:attribute>
-						</xsl:otherwise>
-					</xsl:choose>
-					
+				<sxsl:template match="{@match}">
 					<xsl:apply-templates select="@*[local-name() != 'match']|*|text()" />
 				</sxsl:template>
-			</xsl:for-each>
-			
+			</xsl:for-each>			
 			
 			<sxsl:template match="*[namespace-uri() = 'http://www.w3.org/1999/XSL/Transform#Client']">
 				<sxsl:choose>
@@ -133,8 +111,40 @@
 				</sxsl:choose>
 			</sxsl:template>
 			
+			<sxsl:template name="create-template-id">
+				<sxsl:value-of select="concat('temp-',generate-id(.))" />
+			</sxsl:template>
+			
+			<sxsl:template name="create-template-parent-id">
+				<sxsl:choose>
+					<sxsl:when test="string-length(../@id) > 0">
+						<sxsl:value-of select="../@id" />
+					</sxsl:when>
+					<sxsl:otherwise>
+						<sxsl:value-of select="generate-id(..)" />
+					</sxsl:otherwise>
+				</sxsl:choose>
+			</sxsl:template>
+			
 		</sxsl:stylesheet>
 	</xsl:template>
+	
+		
+	<xsl:template name="create-template-id">
+		<xsl:value-of select="concat('temp-',generate-id(.))" />
+	</xsl:template>
+	
+	<xsl:template name="create-template-parent-id">
+		<xsl:choose>
+			<xsl:when test="string-length(../@id) > 0">
+				<xsl:value-of select="../@id" />
+			</xsl:when>
+			<xsl:otherwise>
+				<xsl:value-of select="generate-id(..)" />
+			</xsl:otherwise>
+		</xsl:choose>
+	</xsl:template>
+	
 	
 	<xsl:template match="view:event" mode="header">
 		<xsl:copy>
@@ -151,7 +161,7 @@
 	</xsl:template>
 	
 	<xsl:template match="view:event" mode="content">
-		<xsl:attribute name="on{@on}">View.getInstance().fireEvent(this, '<xsl:value-of select="generate-id(.)" />')</xsl:attribute>
+		<xsl:attribute name="on{@on}">View.trigger(this, '<xsl:value-of select="generate-id(.)" />')</xsl:attribute>
 	</xsl:template>
 	
 	<xsl:template match="txsl:*">

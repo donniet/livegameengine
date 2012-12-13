@@ -14,7 +14,7 @@
 	
 	<xsl:variable name="game-meta-doc" select="document($game-meta-uri)" />
 	
-	<xsl:template match="/">
+	<xsl:template match="/scxml:datamodel">
 		<html>
 			<head>
 				<title>Tic Tac Toe</title>
@@ -43,13 +43,13 @@
 	<xsl:template name="players">
 		<ul>
 			<view:eventHandler event="game.update-meta">
-				<view:template>
+				<view:template match="/">
 					<li>
 						<span>
 							<view:eventHandler event="game.playerConnectionChange">
 								<view:parameter name="connected" />
 								<view:parameter name="player" />
-								<view:template>
+								<view:template match="/">
 									<txsl:if test="$player = '{game:gameUser/game:userid}'">
 										<strong>
 											<txsl:choose>
@@ -101,7 +101,7 @@
 							<view:parameter name="px" />
 							<view:parameter name="py" />
 							<view:parameter name="role" />
-							<view:template>
+							<view:template match="/">
 								<txsl:if test="$px == {$x} and $py == {$y}">
 									<strong><txsl:value-of select="$role" /></strong>
 								</txsl:if>
