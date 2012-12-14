@@ -486,7 +486,26 @@ public class Game implements Scriptable, EventDispatcher, SCXMLListener, XmlSeri
 		
 		if(success) {
 			//persistGameState();
-			sendWatcherMessage(event, params, content);
+			ClientMessage m = null;
+			
+			if(content == null) {
+				m = new ClientMessage(this, event, params);
+			}
+			else if(String.class.isAssignableFrom(content.getClass())) {
+				m = new ClientMessage(this, event, params, (String)content);
+			}
+			else if(Node.class.isAssignableFrom(content.getClass())) {
+				m = new ClientMessage(this, event, params, (Node)content);
+			}
+			else {
+				m = new ClientMessage(this, event, params, content.toString());
+			}
+			
+			PersistenceManager pm = PMF.getInstance().getPersistenceManager();
+			
+			pm.makePersistent(m);
+			
+			//sendWatcherMessage(event, params, content);
 		}
 	}
 
@@ -888,9 +907,9 @@ public class Game implements Scriptable, EventDispatcher, SCXMLListener, XmlSeri
 	}
 
 	@Override
-	public void serializeToXml(String elementName, ContentHandler writer) throws XMLStreamException {
+	public void serializeToXml(String elementName, XMLStreamWriter writer) throws XMLStreamException {
 		String ns = Config.getInstance().getGameEngineNamespace();
-		writer.startElement(ns, elementName, null, new Attribu)(ns, elementName);
+		writer.writeStartElement(ns, elementName);
 		writer.writeNamespace("", Config.getInstance().getGameEngineNamespace());
 		writer.writeAttribute("key", KeyFactory.keyToString(getKey()));
 		writer.writeStartElement(ns, "players");

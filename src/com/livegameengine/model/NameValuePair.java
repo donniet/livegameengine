@@ -7,6 +7,7 @@ import org.mozilla.javascript.Scriptable;
 
 public class NameValuePair<ValueType> implements Scriptable {
 	private Scriptable parent_, prototype_;
+	private boolean readonly_ = true;
 	
 	private String name;
 	private ValueType value;
@@ -14,6 +15,10 @@ public class NameValuePair<ValueType> implements Scriptable {
 	public NameValuePair(String name, ValueType value) {
 		this.name = name;
 		this.value = value;
+	}
+	public NameValuePair(String name, ValueType value, boolean readonly) {
+		this(name, value);
+		readonly_ = readonly;
 	}
 	
 	public String getName() {
@@ -102,7 +107,9 @@ public class NameValuePair<ValueType> implements Scriptable {
 	}
 
 	@Override
-	public void put(String arg0, Scriptable arg1, Object arg2) {		
+	public void put(String arg0, Scriptable arg1, Object arg2) {	
+		if(readonly_) return;
+		
 		if(arg0.equals("name"))
 			setName(arg2.toString());
 		else if(arg0.equals("value"))

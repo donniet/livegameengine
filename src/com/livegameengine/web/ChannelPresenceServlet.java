@@ -20,6 +20,7 @@ import com.google.appengine.api.datastore.KeyFactory;
 import com.google.appengine.api.users.User;
 import com.google.appengine.api.users.UserService;
 import com.google.appengine.api.users.UserServiceFactory;
+import com.livegameengine.model.ClientMessage;
 import com.livegameengine.model.Game;
 import com.livegameengine.model.GameUser;
 import com.livegameengine.model.Player;
@@ -63,11 +64,19 @@ public class ChannelPresenceServlet extends HttpServlet {
 			}
 			
 			if(playerConnectedChange) {
+				
 				Map<String,String> params = new HashMap<String,String>();
 				params.put("player", gu.getHashedUserId());
 				params.put("connected", Boolean.toString(presence.isConnected()));
 				
-				g.sendWatcherMessage("game.playerConnectionChange", params, null);
+
+				ClientMessage m = new ClientMessage(g, "game.playerConnectionChange", params);
+				pm = PMF.getInstance().getPersistenceManager();
+				
+				pm.makePersistent(m);
+				
+				
+				//g.sendWatcherMessage("game.playerConnectionChange", params, null);
 			}
 		}
 		

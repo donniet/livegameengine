@@ -2,13 +2,18 @@ package com.livegameengine.model;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 
+import javax.jdo.annotations.IdGeneratorStrategy;
 import javax.jdo.annotations.NotPersistent;
 import javax.jdo.annotations.PersistenceCapable;
 import javax.jdo.annotations.Persistent;
+import javax.jdo.annotations.PrimaryKey;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
 import javax.xml.transform.Transformer;
@@ -28,26 +33,34 @@ import com.google.appengine.api.datastore.Blob;
 import com.google.appengine.api.datastore.Key;
 import com.google.appengine.api.datastore.KeyFactory;
 import com.livegameengine.config.Config;
+import com.livegameengine.util.Util;
 
 
 @PersistenceCapable
 public class ClientMessage implements Scriptable, XmlSerializable {
 	private static final long serialVersionUID = 4649802893267737142L;
-	
+		
 	private static final String LOCAL_NAME = "clientMessage";
 	private static final String NAMESPACE_PREFIX = "game";
 	
 	@NotPersistent
-	private Config config_ = Config.getInstance();
+	private Scriptable parent_, prototype_; 
 	
-	@Persistent
+	@NotPersistent
+	private Config config_ = Config.getInstance();
+
+	@PrimaryKey
+	@Persistent(valueStrategy = IdGeneratorStrategy.IDENTITY)
 	private Key key;
 	
 	@Persistent
-	private List<String> parameterNames;
+	private String name;
 	
 	@Persistent
-	private List<String> parameterValues;
+	protected List<String> parameterNames;
+	
+	@Persistent
+	protected List<String> parameterValues;
 	
 	@Persistent
 	private Blob content;
@@ -55,6 +68,53 @@ public class ClientMessage implements Scriptable, XmlSerializable {
 	@Persistent
 	private Date messageDate;
 	
+	@Persistent
+	private Key gameKey;
+	
+	public ClientMessage(Game g, String name, Map<String,String> params) {
+		this.gameKey = g.getKey();
+		this.name = name;
+		this.messageDate = new Date();
+		
+		this.parameterNames = new ArrayList<String>();
+		this.parameterValues = new ArrayList<String>();
+		
+		for(Iterator<String> i = params.keySet().iterator(); i.hasNext();) {
+			String k = i.next();
+			
+			this.parameterNames.add(k);
+			this.parameterValues.add(params.get(k));
+		}
+	}
+	
+	public ClientMessage(Game g, String name, Map<String,String> params, String content) {
+		this(g, name, params);
+		
+		setContent(content);
+	}
+	
+	public ClientMessage(Game g, String name, Map<String,String> params, Node content) {
+		this(g, name, params);
+		
+		setContent(content);
+	}
+	
+	public String getName() {
+		return name;
+	}
+	public void setName(String name) {
+		this.name = name;
+	}
+	public void setMessageDate(Date messageDate) {
+		this.messageDate = messageDate;
+	}
+	
+	public Key getGameKey() {
+		return gameKey;
+	}
+	public void setGameKey(Key gameKey) {
+		this.gameKey = gameKey;
+	}
 	
 	public NameValuePair<String> getParameter(int i) {
 		if(i >= 0 && i < parameterNames.size()) {
@@ -68,7 +128,8 @@ public class ClientMessage implements Scriptable, XmlSerializable {
 		return getParameter(parameterNames.indexOf(s));
 	}
 	
-	public Node getContent() {
+	// returns either String or Node
+	public Object getContent() {
 		try {
 			Document doc = config_.newXmlDocument();
 			Transformer trans = config_.newTransformer();
@@ -85,9 +146,10 @@ public class ClientMessage implements Scriptable, XmlSerializable {
 		} catch (TransformerConfigurationException e) {
 			return null;
 		} catch (TransformerException e) {
-			//TODO: add error handling here
-			return null;
+			//ignore, just return the string
 		}
+		
+		return new String(content.getBytes());
 	}
 	public void setContent(Node content) {
 		if(content == null) {
@@ -109,9 +171,17 @@ public class ClientMessage implements Scriptable, XmlSerializable {
 			return;
 		}
 	}
+	public void setContent(String content) {
+		if(content == null) {
+			this.content = null;
+			return;
+		}
+		
+		this.content = new Blob(content.getBytes());
+	}
 		
 	@Override
-	public void serializeToXml(String elementName, ContentHandler writer)
+	public void serializeToXml(String elementName, XMLStreamWriter writer)
 			throws XMLStreamException {
 		String ns = config_.getGameEngineNamespace();
 		
@@ -128,13 +198,14 @@ public class ClientMessage implements Scriptable, XmlSerializable {
 		
 		if(content != null) {
 			writer.writeStartElement(ns, "content");
-						
-			try {
-				Transformer trans = config_.newTransformer();
-				trans.transform(new StreamSource(new ByteArrayInputStream(content.getBytes())), new SAXResult(writer));
-			} catch (TransformerException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
+			
+			Object content = getContent();
+			
+			if(String.class.isAssignableFrom(content.getClass())) {
+				writer.writeCharacters((String)content);
+			}
+			else if(Node.class.isAssignableFrom(content.getClass())) {
+				Util.writeNode((Node)content, writer);
 			}
 						
 			writer.writeEndElement();
@@ -168,13 +239,17 @@ public class ClientMessage implements Scriptable, XmlSerializable {
 	@Override
 	public Object get(String arg0, Scriptable arg1) {
 		if(arg0.equals("content"))
-			return null;
+			return getContent();
 		else if(arg0.equals("key"))
 			return KeyFactory.keyToString(getKey());
 		else if(arg0.equals("messageDate"))
 			return getMessageDate();
-		else if(arg0.equals("getParameter"))
-			return null;
+		else if(arg0.equals("name"))
+			return getName();
+		else if(arg0.equals("parameters"))
+			return new ClientMessageParametersObject(this);
+		
+		return NOT_FOUND;
 	}
 
 	private Date getMessageDate() {
@@ -187,80 +262,72 @@ public class ClientMessage implements Scriptable, XmlSerializable {
 
 	@Override
 	public Object get(int arg0, Scriptable arg1) {
-		// TODO Auto-generated method stub
-		return null;
+		return NOT_FOUND;
 	}
 
 	@Override
 	public String getClassName() {
-		// TODO Auto-generated method stub
-		return null;
+		return "ClientMessage";
 	}
 
 	@Override
 	public Object getDefaultValue(Class<?> arg0) {
-		// TODO Auto-generated method stub
-		return null;
+		return String.format("[object %s]", getClassName());
 	}
 
 	@Override
 	public Object[] getIds() {
-		// TODO Auto-generated method stub
-		return null;
+		return new Object[] { "content", "key", "messageDate", "name", "parameters" };
 	}
 
 	@Override
 	public Scriptable getParentScope() {
-		// TODO Auto-generated method stub
-		return null;
+		return parent_;
 	}
 
 	@Override
 	public Scriptable getPrototype() {
-		// TODO Auto-generated method stub
-		return null;
+		return prototype_;
 	}
 
 	@Override
 	public boolean has(String arg0, Scriptable arg1) {
-		// TODO Auto-generated method stub
-		return false;
+		String[] ids = (String[])getIds();
+		
+		return Arrays.binarySearch(ids, arg0) >= 0;
 	}
 
 	@Override
 	public boolean has(int arg0, Scriptable arg1) {
-		// TODO Auto-generated method stub
 		return false;
 	}
 
 	@Override
-	public boolean hasInstance(Scriptable arg0) {
-		// TODO Auto-generated method stub
-		return false;
+	public boolean hasInstance(Scriptable value) {
+        Scriptable proto = value.getPrototype();
+        while (proto != null) {
+            if (proto.equals(this))
+                return true;
+            proto = proto.getPrototype();
+        }
+
+        return false;
 	}
 
 	@Override
-	public void put(String arg0, Scriptable arg1, Object arg2) {
-		// TODO Auto-generated method stub
-		
-	}
+	public void put(String arg0, Scriptable arg1, Object arg2) {}
 
 	@Override
-	public void put(int arg0, Scriptable arg1, Object arg2) {
-		// TODO Auto-generated method stub
-		
-	}
+	public void put(int arg0, Scriptable arg1, Object arg2) {}
 
 	@Override
 	public void setParentScope(Scriptable arg0) {
-		// TODO Auto-generated method stub
-		
+		parent_ = arg0;
 	}
 
 	@Override
 	public void setPrototype(Scriptable arg0) {
-		// TODO Auto-generated method stub
-		
+		prototype_ = arg0;
 	}
 	
 }
