@@ -30,6 +30,7 @@ import org.apache.commons.logging.LogFactory;
 import org.w3c.dom.Document;
 import org.w3c.dom.DocumentType;
 import org.w3c.dom.Node;
+import org.xml.sax.helpers.XMLReaderFactory;
 
 import com.google.appengine.api.channel.ChannelService;
 import com.google.appengine.api.channel.ChannelServiceFactory;
@@ -157,6 +158,9 @@ public class GameServlet extends HttpServlet {
 				else if(m.group(2).equals("meta")) {
 					if(req.getMethod().equals("GET")) {
 						resp.setContentType("text/xml");
+						
+						
+						
 						XMLOutputFactory factory = XMLOutputFactory.newFactory();
 						XMLStreamWriter writer = null;
 						try {

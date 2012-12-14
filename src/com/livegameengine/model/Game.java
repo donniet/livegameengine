@@ -888,9 +888,9 @@ public class Game implements Scriptable, EventDispatcher, SCXMLListener, XmlSeri
 	}
 
 	@Override
-	public void serializeToXml(String elementName, XMLStreamWriter writer) throws XMLStreamException {
+	public void serializeToXml(String elementName, ContentHandler writer) throws XMLStreamException {
 		String ns = Config.getInstance().getGameEngineNamespace();
-		writer.writeStartElement(ns, elementName);
+		writer.startElement(ns, elementName, null, new Attribu)(ns, elementName);
 		writer.writeNamespace("", Config.getInstance().getGameEngineNamespace());
 		writer.writeAttribute("key", KeyFactory.keyToString(getKey()));
 		writer.writeStartElement(ns, "players");
