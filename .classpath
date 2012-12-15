@@ -15,6 +15,6 @@
 	<classpathentry kind="lib" path="war/WEB-INF/lib/xalan.jar"/>
 	<classpathentry kind="lib" path="war/WEB-INF/lib/flexjson-2.1.jar"/>
 	<classpathentry kind="lib" path="war/WEB-INF/lib/commons-collections-3.2.1.jar"/>
-	<classpathentry kind="con" path="com.google.appengine.eclipse.core.GAE_CONTAINER/v2"/>
+	<classpathentry kind="con" path="com.google.appengine.eclipse.core.GAE_CONTAINER/App Engine/v2"/>
 	<classpathentry kind="output" path="war/WEB-INF/classes"/>
 </classpath>

@@ -140,17 +140,7 @@ public class GameState implements Scriptable, XmlSerializable {
 		for(Iterator<GameStateData> i = getDatamodel().iterator(); i.hasNext(); ) {
 			GameStateData d = i.next();
 			
-			ByteArrayInputStream bis = new ByteArrayInputStream(d.getValue());
-			DOMResult dr = new DOMResult(doc);
-			
-			try {
-				trans.transform(new StreamSource(bis), dr);
-			} catch (TransformerException e) {
-				dr = new DOMResult();
-				log.error("Transform failed: " + d.getId(), e);
-			}
-			
-			cxt.setLocal(d.getId(), doc);
+			cxt.setLocal(d.getId(), d.getValue());
 		}
 	}
 	

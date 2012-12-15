@@ -337,6 +337,25 @@ public class Game implements Scriptable, EventDispatcher, SCXMLListener, XmlSeri
 		currentStateKey = k;
 	}
 
+
+	public ClientMessage getMostRecentClientMessage() {
+		PersistenceManager pm = JDOHelper.getPersistenceManager(this);
+		
+		Query q = pm.newQuery(ClientMessage.class);
+		q.setFilter("gameKey = gameKeyIn");
+		q.setOrdering("messageDate desc");
+		q.declareParameters(Key.class.getName() + " gameKeyIn");
+		q.setRange(0,1);
+		
+		List<ClientMessage> res = (List<ClientMessage>)q.execute(this.getKey());
+		
+		if(res.size() > 0) {
+			return res.get(0);
+		}
+		
+		return null;
+	}
+	
 	public GameState getMostRecentState() {
 		GameState ret = null;
 		
@@ -905,6 +924,7 @@ public class Game implements Scriptable, EventDispatcher, SCXMLListener, XmlSeri
 	public Object get(int arg0, Scriptable arg1) {
 		return NOT_FOUND;
 	}
+	
 
 	@Override
 	public void serializeToXml(String elementName, XMLStreamWriter writer) throws XMLStreamException {
@@ -935,6 +955,11 @@ public class Game implements Scriptable, EventDispatcher, SCXMLListener, XmlSeri
 		GameState gs = getMostRecentState();
 		if(gs != null) {
 			gs.serializeToXml("mostRecentState", writer);
+		}
+		
+		ClientMessage cm = getMostRecentClientMessage();
+		if(cm != null) {
+			cm.serializeToXml("mostRecentClientMessage", writer);
 		}
 		
 		getOwner().serializeToXml("owner", writer);

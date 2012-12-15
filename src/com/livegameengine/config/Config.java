@@ -438,7 +438,10 @@ public class Config implements NamespaceContext {
 			GameStateData gsd = i.next();
 
 			trans = transformerFactory_.newTransformer();
-			trans.transform(new StreamSource(new ByteArrayInputStream(gsd.getValue())), new DOMResult(datamodelNode));		
+			
+			Node imported = doc.importNode(gsd.getValue(), true);
+			
+			datamodelNode.appendChild(imported);
 		}
 		
 		transformAsDatamodel(new DOMSource(doc), result, playerid);

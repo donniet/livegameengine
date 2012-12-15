@@ -1,5 +1,6 @@
 package com.livegameengine.model;
 
+import java.io.ByteArrayInputStream;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.HashSet;
@@ -12,10 +13,18 @@ import javax.jdo.annotations.Persistent;
 import javax.jdo.annotations.PrimaryKey;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
+import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerConfigurationException;
+import javax.xml.transform.TransformerException;
+import javax.xml.transform.dom.DOMResult;
+import javax.xml.transform.stream.StreamSource;
 
 import org.mozilla.javascript.Scriptable;
+import org.w3c.dom.Document;
+import org.w3c.dom.Node;
 
 import com.livegameengine.config.Config;
+import com.livegameengine.util.Util;
 
 import com.google.appengine.api.datastore.Blob;
 import com.google.appengine.api.datastore.Key;
@@ -27,6 +36,7 @@ public class GameStateData implements Scriptable, XmlSerializable {
 	private static final long serialVersionUID = 1;
 	
 	@NotPersistent private Scriptable parent_, prototype_;
+	@NotPersistent private Config config = Config.getInstance();
 	
 	@PrimaryKey
 	@Persistent(valueStrategy = IdGeneratorStrategy.IDENTITY) 
@@ -63,6 +73,25 @@ public class GameStateData implements Scriptable, XmlSerializable {
 		return id;
 	}
 	
+	public Node getValue() {
+		if(value == null) return null;
+		
+		try {
+			Document doc = config.newXmlDocument();
+			Transformer trans = config.newTransformer();
+			
+			trans.transform(new StreamSource(new ByteArrayInputStream(value.getBytes())), new DOMResult(doc));
+			
+			return doc;
+		} catch (TransformerConfigurationException e) {
+			//TODO: handle this error
+		} catch (TransformerException e) {
+			//TODO: handle this error
+		}
+		
+		return null;
+	}
+	/*
 	public byte[] getValue() {
 		if(value == null) {
 			return null;
@@ -72,6 +101,7 @@ public class GameStateData implements Scriptable, XmlSerializable {
 			
 		}
 	}
+	*/
 	public void setValue(final byte[] value) {
 		if(value == null) {
 			this.value = null;
@@ -101,6 +131,12 @@ public class GameStateData implements Scriptable, XmlSerializable {
 		writer.writeStartElement(ns, "id");
 		writer.writeCharacters(getId());
 		writer.writeEndElement();
+		
+		if(value != null) {
+			writer.writeStartElement(ns, "value");
+			Util.writeNode(getValue(), writer);	
+			writer.writeEndElement();
+		}
 		
 		writer.writeEndElement();
 	}

@@ -52,7 +52,7 @@ public class Player implements Scriptable, XmlSerializable {
 	
 	@Persistent
 	private String role;
-	
+		
 	public Player() {} 
 	
 	protected Player(Game game, GameUser gameUser, String role) {

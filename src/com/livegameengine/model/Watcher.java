@@ -4,7 +4,9 @@ import java.io.UnsupportedEncodingException;
 import java.math.BigInteger;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import javax.jdo.JDOHelper;
 import javax.jdo.PersistenceManager;
@@ -38,12 +40,16 @@ public class Watcher extends ScriptableObject {
 	
 	@Persistent
 	private Key gameUserKey;
+	
+	@Persistent
+	private Set<String> listeningFor;
 		
 	public Watcher() {}
 	
 	public Watcher(Game gameIn, GameUser gameUserIn) {
 		gameKey = gameIn.getKey();
 		gameUserKey = gameUserIn.getKey();
+		listeningFor = new HashSet<String>();
 		
 		channelkey = hashGameAndGameUser(gameIn, gameUserIn);
 	}
@@ -117,6 +123,10 @@ public class Watcher extends ScriptableObject {
 		}
 		
 		return ret;
+	}
+	
+	public void addListners(Set<String> events) {
+		listeningFor.addAll(events);
 	}
 	
 	public Key getKey() {

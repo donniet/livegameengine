@@ -9,6 +9,9 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
+import javax.jdo.JDOHelper;
+import javax.jdo.PersistenceManager;
+import javax.jdo.Query;
 import javax.jdo.annotations.IdGeneratorStrategy;
 import javax.jdo.annotations.NotPersistent;
 import javax.jdo.annotations.PersistenceCapable;
@@ -71,6 +74,18 @@ public class ClientMessage implements Scriptable, XmlSerializable {
 	@Persistent
 	private Key gameKey;
 	
+	public static List<ClientMessage> findClientMessagesSince(Game g, Date since) {
+		PersistenceManager pm = JDOHelper.getPersistenceManager(g);
+		Query q = pm.newQuery(ClientMessage.class);
+		
+		q.setFilter("gameKey == gameIn && messageDate > since");
+		q.declareParameters(Date.class.getName() + " since, " + Key.class.getName() + " gameKeyIn");
+		q.setOrdering("messageDate asc");
+		q.setRange(0,1000);
+		
+		return (List<ClientMessage>)q.execute(g.getKey(), since);		
+	}
+	
 	public ClientMessage(Game g, String name, Map<String,String> params) {
 		this.gameKey = g.getKey();
 		this.name = name;
@@ -128,7 +143,7 @@ public class ClientMessage implements Scriptable, XmlSerializable {
 		return getParameter(parameterNames.indexOf(s));
 	}
 	
-	// returns either String or Node
+	// returns either String or Node (or null)
 	public Object getContent() {
 		try {
 			Document doc = config_.newXmlDocument();
