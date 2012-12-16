@@ -140,14 +140,10 @@ public class GameStateData implements Scriptable, XmlSerializable {
 		writer.writeStartElement(ns, elementName);
 		
 		writer.writeAttribute("key", KeyFactory.keyToString(getKey()));
-		writer.writeStartElement(ns, "id");
-		writer.writeCharacters(getId());
-		writer.writeEndElement();
+		writer.writeAttribute("name", getId());
 		
 		if(value != null) {
-			writer.writeStartElement(ns, "value");
 			Util.writeNode(getValue(), writer);	
-			writer.writeEndElement();
 		}
 		
 		writer.writeEndElement();

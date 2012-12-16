@@ -342,7 +342,7 @@ public class Game implements Scriptable, EventDispatcher, SCXMLListener, XmlSeri
 		PersistenceManager pm = JDOHelper.getPersistenceManager(this);
 		
 		Query q = pm.newQuery(ClientMessage.class);
-		q.setFilter("gameKey = gameKeyIn");
+		q.setFilter("gameKey == gameKeyIn");
 		q.setOrdering("messageDate desc");
 		q.declareParameters(Key.class.getName() + " gameKeyIn");
 		q.setRange(0,1);

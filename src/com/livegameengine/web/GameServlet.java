@@ -213,6 +213,7 @@ public class GameServlet extends HttpServlet {
 						
 					} catch (XMLStreamException e) {
 						resp.setStatus(500);
+						e.printStackTrace();
 					}						
 				}
 				else {
