@@ -439,9 +439,7 @@ public class Config implements NamespaceContext {
 
 			trans = transformerFactory_.newTransformer();
 			
-			Node imported = doc.importNode(gsd.getValue(), true);
-			
-			datamodelNode.appendChild(imported);
+			gsd.appendValueInto(datamodelNode);
 		}
 		
 		transformAsDatamodel(new DOMSource(doc), result, playerid);

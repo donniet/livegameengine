@@ -26,7 +26,7 @@ import com.livegameengine.persist.PMF;
 
 @PersistenceCapable
 public class GameType implements Scriptable, XmlSerializable {
-	private static final long serialVersionUID = 1;
+	private static final long serialVersionUID = 2;
 	
 	@NotPersistent private Scriptable parent_, prototype_;
 	

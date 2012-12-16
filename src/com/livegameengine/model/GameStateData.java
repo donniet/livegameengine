@@ -73,6 +73,18 @@ public class GameStateData implements Scriptable, XmlSerializable {
 		return id;
 	}
 	
+	public void appendValueInto(Node parent) {
+		try {
+			Transformer trans = config.newTransformer();
+			
+			trans.transform(new StreamSource(new ByteArrayInputStream(value.getBytes())), new DOMResult(parent));
+		} catch (TransformerConfigurationException e) {
+			//TODO: handle this error
+		} catch (TransformerException e) {
+			//TODO: handle this error
+		}		
+	}
+	
 	public Node getValue() {
 		if(value == null) return null;
 		

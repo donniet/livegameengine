@@ -147,6 +147,8 @@ public class GameServlet extends HttpServlet {
 					params.put("doctype-system", config.getViewDoctypeSystem());
 					params.put("jsapiUrl", "/_ah/channel/jsapi");
 					params.put("version", gt.getClientVersion());
+					params.put("serverTime", config.getDateFormat().format(new Date()));
+					params.put("clientMessageUrl", "message");
 					//params.put("userToken")
 					
 					Watcher w = g.addWatcher(u);
@@ -326,6 +328,8 @@ public class GameServlet extends HttpServlet {
 					return;
 				}
 				
+				Date mostRecentMessage = messages.get(messages.size() - 1).getMessageDate();
+				
 				try {
 					XMLOutputFactory factory = XMLOutputFactory.newFactory();
 					XMLStreamWriter writer = factory.createXMLStreamWriter(resp.getOutputStream());
@@ -334,6 +338,8 @@ public class GameServlet extends HttpServlet {
 									
 					writer.writeStartElement(config.getGameEngineNamespace(), "messages");
 					writer.writeNamespace("", config.getGameEngineNamespace());
+					
+					writer.writeAttribute("latestDate", config.getDateFormat().format(mostRecentMessage));
 					
 					for(Iterator<ClientMessage> i = messages.iterator(); i.hasNext();) {
 						ClientMessage cm = i.next();

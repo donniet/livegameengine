@@ -113,7 +113,14 @@ public class ClientMessage implements Scriptable, XmlSerializable {
 		
 		setContent(content);
 	}
-	
+
+	public Date getMessageDate() {
+		return messageDate;
+	}
+
+	public Key getKey() {
+		return key;
+	}
 	public String getName() {
 		return name;
 	}
@@ -203,6 +210,14 @@ public class ClientMessage implements Scriptable, XmlSerializable {
 		writer.writeStartElement(ns, elementName);
 		writer.writeAttribute("key", KeyFactory.keyToString(key));
 		
+		writer.writeStartElement(ns, "messageDate");
+		writer.writeCharacters(config_.getDateFormat().format(getMessageDate()));
+		writer.writeEndElement();
+		
+		writer.writeStartElement(ns, "event");
+		writer.writeCharacters(getName());
+		writer.writeEndElement();
+		
 		int min = Math.min(parameterNames.size(), parameterValues.size());
 		for(int i = 0; i < min; i++) {
 			writer.writeStartElement(ns, "param");
@@ -267,13 +282,6 @@ public class ClientMessage implements Scriptable, XmlSerializable {
 		return NOT_FOUND;
 	}
 
-	private Date getMessageDate() {
-		return messageDate;
-	}
-
-	private Key getKey() {
-		return key;
-	}
 
 	@Override
 	public Object get(int arg0, Scriptable arg1) {

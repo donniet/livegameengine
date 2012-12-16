@@ -21,6 +21,8 @@
 	<xsl:param name="jsapiUrl" />
 	<xsl:param name="userToken" select="''" />
 	<xsl:param name="titlePrefix" select="'Live Game Engine - '" />
+	<xsl:param name="clientMessageUrl" />
+	<xsl:param name="serverTime" />
 	
 	<xsl:variable name="version" select="0.2" />
 	
@@ -64,6 +66,8 @@
 		<xsl:copy>
 			<script type="text/javascript" src="/client/{$version}/view.js"></script>
 			<script type="text/javascript">
+				View.setClientMessageChannelUrl("<xsl:value-of select="$clientMessageUrl" />");
+				View.setServerLoadTime("<xsl:value-of select="$serverTime" />");
 				View.registerEventHandlers([<xsl:for-each select="//view:eventHandler">
 						{ "elementId": "<xsl:call-template name="create-template-parent-id" />", "templateId": "<xsl:call-template name="create-template-id" />" },</xsl:for-each>
 				]);

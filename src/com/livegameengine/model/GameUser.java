@@ -33,7 +33,7 @@ import com.livegameengine.persist.PMF;
 
 @PersistenceCapable 
 public class GameUser implements Scriptable, XmlSerializable {
-	private static final long serialVersionUID = 4649802893267737141L;
+	private static final long serialVersionUID = 4649802893267737142L;
 	
 	private static final String LOCAL_NAME = "gameUser";
 	private static final String NAMESPACE_PREFIX = "game";
