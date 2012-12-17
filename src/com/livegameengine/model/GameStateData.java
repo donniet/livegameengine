@@ -94,7 +94,13 @@ public class GameStateData implements Scriptable, XmlSerializable {
 			
 			trans.transform(new StreamSource(new ByteArrayInputStream(value.getBytes())), new DOMResult(doc));
 			
-			return doc;
+			for(int i = 0; i < doc.getChildNodes().getLength(); i++) {
+				Node n = doc.getChildNodes().item(i);
+				if(n.getNodeType() == Node.ELEMENT_NODE)
+					return n;
+			}
+			
+			return null;
 		} catch (TransformerConfigurationException e) {
 			//TODO: handle this error
 		} catch (TransformerException e) {
@@ -135,18 +141,11 @@ public class GameStateData implements Scriptable, XmlSerializable {
 	
 	@Override
 	public void serializeToXml(String elementName, XMLStreamWriter writer) throws XMLStreamException {
-		String ns = Config.getInstance().getGameEngineNamespace();
+		String ns = config.getGameEngineNamespace();
 		
-		writer.writeStartElement(ns, elementName);
-		
-		writer.writeAttribute("key", KeyFactory.keyToString(getKey()));
-		writer.writeAttribute("name", getId());
-		
-		if(value != null) {
-			Util.writeNode(getValue(), writer);	
+		if(value != null) {			
+			Util.writeNode(getValue(), writer);
 		}
-		
-		writer.writeEndElement();
 	}
 	
 	@Override public void serializeToXml(XMLStreamWriter writer) throws XMLStreamException {

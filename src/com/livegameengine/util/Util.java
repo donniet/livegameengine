@@ -18,28 +18,24 @@ import org.w3c.dom.NodeList;
 import com.livegameengine.config.Config;
 
 
-public class Util {
+public class Util {	
 	public static void writeNode(Node n, XMLStreamWriter writer) throws DOMException, XMLStreamException {
-		writeNode(n, writer, false, 0);
-	}
-	
-	public static void writeNode(Node n, XMLStreamWriter writer, boolean includeDocument, int prefixCounter) throws DOMException, XMLStreamException {
 		String prefix = null;
 		
 		switch(n.getNodeType()) {
 		case Node.ATTRIBUTE_NODE:
-			if(n.getLocalName() == "xmlns") break;
-			
-			prefix = writer.getPrefix(n.getNamespaceURI());
-			
-			if(prefix == null && n.getNamespaceURI() != null) {
-				prefix = "ns" + (prefixCounter++);
-				writer.setPrefix(prefix, n.getNamespaceURI());
+			if(n.getLocalName() == "xmlns") { 
+				writer.writeNamespace("", n.getNodeValue());
 			}
-			if(n.getNamespaceURI() != null)
-				writer.writeAttribute(prefix, n.getNamespaceURI(), n.getLocalName(), n.getNodeValue());
-			else 
+			else if(n.getPrefix() == "xmlns") {
+				writer.writeNamespace(n.getLocalName(), n.getNodeValue());
+			}
+			else if(n.getPrefix() != null && n.getPrefix() != "") {
+				writer.writeAttribute(n.getPrefix(), n.getNamespaceURI(), n.getLocalName(), n.getNodeValue());
+			}
+			else { 
 				writer.writeAttribute(n.getLocalName(), n.getNodeValue());
+			}
 			break;
 		case Node.CDATA_SECTION_NODE:
 			writer.writeCData(n.getNodeValue());
@@ -48,35 +44,34 @@ public class Util {
 			writer.writeComment(n.getNodeValue());
 			break;
 		case Node.DOCUMENT_NODE:
-			if(includeDocument) {
-				writer.writeStartDocument();
-			}
+			writer.writeStartDocument();
 			for(int i = 0; i < n.getChildNodes().getLength(); i++) {
 				Node m = n.getChildNodes().item(i);
-				writeNode(m, writer, false, prefixCounter);
+				writeNode(m, writer);
 			}
-			if(includeDocument) {
-				writer.writeEndDocument();
-			}
+			writer.writeEndDocument();
 			break;
 		case Node.DOCUMENT_TYPE_NODE:
 			writer.writeDTD(n.getNodeValue());
 			break;
 		case Node.ELEMENT_NODE:
-			prefix = writer.getPrefix(n.getNamespaceURI());
 			
-			if(prefix == null) {
-				prefix = "ns" + (prefixCounter++);
-				writer.setPrefix(prefix, n.getNamespaceURI());
-			}
+			if(n.getPrefix() != null && n.getPrefix() != "")
+				writer.writeStartElement(n.getPrefix(), n.getLocalName(), n.getNamespaceURI());
+			else
+				writer.writeStartElement(n.getLocalName());
+			
 			for(int i = 0; i < n.getAttributes().getLength(); i++) {
 				Node m = n.getAttributes().item(i);
-				writeNode(m, writer, false, prefixCounter);
+				writeNode(m, writer);
 			}
 			for(int i = 0; i < n.getChildNodes().getLength(); i++) {
 				Node m = n.getChildNodes().item(i);
-				writeNode(m, writer, false, prefixCounter);
+				writeNode(m, writer);
 			}
+			
+			writer.writeEndElement();
+			
 			break;
 		case Node.ENTITY_REFERENCE_NODE:
 			writer.writeEntityRef(n.getNodeName());

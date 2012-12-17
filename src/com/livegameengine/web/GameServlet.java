@@ -125,7 +125,7 @@ public class GameServlet extends HttpServlet {
 					
 					try {
 						config.transformDatamodel(gs, new DOMResult(doc), gu.getHashedUserId());
-						Transformer t = config.newTransformer(new StreamSource(GameServlet.class.getResourceAsStream("/tictactoe_view4.xslt")));
+						Transformer t = config.newTransformer(new StreamSource(GameServlet.class.getResourceAsStream("/tictactoe_view5.xslt")));
 						t.setURIResolver(new GameURIResolver(g));
 						t.transform(new DOMSource(doc), new DOMResult(doc1));
 					} catch (TransformerConfigurationException e) {
@@ -225,7 +225,7 @@ public class GameServlet extends HttpServlet {
 					resp.setContentType("text/xml");
 					try {
 						config.transformDatamodel(gs, new DOMResult(doc), "");
-						config.transformFromResource("/tictactoe_view4.xslt", new DOMSource(doc), responseResult);
+						config.transformFromResource("/tictactoe_view5.xslt", new DOMSource(doc), responseResult);
 					} catch (TransformerConfigurationException e) {
 						resp.setStatus(500);
 						e.printStackTrace();

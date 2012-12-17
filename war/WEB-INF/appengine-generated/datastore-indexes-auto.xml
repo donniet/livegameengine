@@ -1,16 +1,4 @@
-<!-- Indices written at Sun, 16 Dec 2012 11:09:31 CST -->
+<!-- Indices written at Mon, 17 Dec 2012 07:45:17 CST -->
 
-<datastore-indexes>
+<datastore-indexes/>
 
-    <!-- Used 1 time in query history -->
-    <datastore-index kind="Player" ancestor="true" source="auto">
-        <property name="playerJoin" direction="asc"/>
-    </datastore-index>
-
-    <!-- Used 1 time in query history -->
-    <datastore-index kind="ClientMessage" ancestor="false" source="auto">
-        <property name="gameKey" direction="asc"/>
-        <property name="messageDate" direction="desc"/>
-    </datastore-index>
-
-</datastore-indexes>
