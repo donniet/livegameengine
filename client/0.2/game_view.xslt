@@ -51,25 +51,6 @@
 			<script type="text/javascript">
 				View.setClientMessageChannelUrl("<xsl:value-of select="$clientMessageUrl" />");
 				View.setServerLoadTime("<xsl:value-of select="$serverTime" />");
-				View.registerEvents([<xsl:for-each select="//view:event">
-					{	"id": "<xsl:value-of select="generate-id(.)" />",
-						"event": "<xsl:value-of select="@event" />",
-						"gameEvent": "<xsl:value-of select="@gameEvent" />", 
-						"parameters": [<xsl:for-each select="view:param">
-							{ "name": "<xsl:value-of select="@name" />", "value": "<xsl:value-of select="@value" />" },</xsl:for-each>
-						],
-						"content":"<xsl:value-of select="java:com.livegameengine.util.Util.escapeJS(java:com.livegameengine.util.Util.serializeXml(*))" />" 
-					},</xsl:for-each>			
-				]);
-				View.registerEventHandlers([<xsl:for-each select="//view:eventHandler">
-					{	"id": "<xsl:value-of select="generate-id(.)" />",
-						"mode": "<xsl:value-of select="@mode" />",
-						"event": "<xsl:value-of select="@event" />",
-						"parameters": [<xsl:for-each select="view:param">
-							{ "name": "<xsl:value-of select="@name" />", "value": "<xsl:value-of select="@value" />" },</xsl:for-each>
-						]
-					},</xsl:for-each>	
-				]);
 			</script>
 			
 			<xsl:apply-templates select="@*|*|text()" />	
@@ -78,12 +59,37 @@
 		
 	<xsl:template match="view:eventHandler" mode="content">
 		<xsl:attribute name="id">
-			<xsl:value-of select="concat('template-',generate-id(.))" />
+			<xsl:value-of select="concat('content-',generate-id(.))" />
 		</xsl:attribute>
+		<script type="text/javascript">
+			View.registerEventHandlers([
+				{	"id": "<xsl:value-of select="generate-id(.)" />",
+					"mode": "<xsl:value-of select="@mode" />",
+					"event": "<xsl:value-of select="@event" />",
+					"parameters": [<xsl:for-each select="view:param">
+						{ "name": "<xsl:value-of select="@name" />", "value": "<xsl:value-of select="@value" />" },</xsl:for-each>
+					],
+					"contentId": "<xsl:value-of select="concat('content-',generate-id(.))" />",
+				}	
+			]);
+		</script>
 	</xsl:template>
 	
 	<xsl:template match="view:event" mode="content">
 		<xsl:attribute name="on{@on}">View.trigger(this, '<xsl:value-of select="generate-id(.)" />')</xsl:attribute>
+		
+		<script type="text/javascript">
+			View.registerEvents([
+				{	"id": "<xsl:value-of select="generate-id(.)" />",
+					"event": "<xsl:value-of select="@event" />",
+					"gameEvent": "<xsl:value-of select="@gameEvent" />", 
+					"parameters": [<xsl:for-each select="view:param">
+						{ "name": "<xsl:value-of select="@name" />", "value": "<xsl:value-of select="@value" />" },</xsl:for-each>
+					],
+					"content":"<xsl:value-of select="java:com.livegameengine.util.Util.escapeJS(java:com.livegameengine.util.Util.serializeXml(*))" />" 
+				},			
+			]);
+		</script>
 	</xsl:template>
 		
 	<xsl:template match="@*|*|text()" priority="-20">

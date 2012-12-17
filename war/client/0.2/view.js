@@ -7,19 +7,19 @@ function dateFromString(s) {
 	return d;
 }
 function stringFromDate(d) {
-  function pad(n) {
-	 var s = n.toString();
-	 return s.length < 2 ? '0'+s : s;
-  };
+	function pad(n) {
+		var s = n.toString();
+		return s.length < 2 ? '0'+s : s;
+	};
 
-  var yyyy = date.getFullYear();
-  var mm1  = pad(date.getMonth()+1);
-  var dd   = pad(date.getDate());
-  var hh   = pad(date.getHours());
-  var mm2  = pad(date.getMinutes());
-  var ss   = pad(date.getSeconds());
-
-  return yyyy +'-' +mm1 +'-' +dd +'T' +hh +':' +mm2 +':' +ss;
+	var yyyy = date.getFullYear();
+	var mm1  = pad(date.getMonth()+1);
+	var dd   = pad(date.getDate());
+	var hh   = pad(date.getHours());
+	var mm2  = pad(date.getMinutes());
+	var ss   = pad(date.getSeconds());
+	
+	return yyyy +'-' +mm1 +'-' +dd +'T' +hh +':' +mm2 +':' +ss;
 }
 
 function ClientMessageChannel(messagesUrl, since) {
@@ -96,9 +96,21 @@ function ViewConstructor() {
 	this.channel = null;
 	this.clientMessageChannelUrl_ = null;
 	this.serverLoadTime_ = new Date();
+	this.events_ = new Array();
+	this.handlers_ = new Array();
 	
 	var self = this;
 	window.onload = function() { self.handleLoad(); }
+}
+ViewConstructor.prototype.addEvents = function(arr) {
+	for(var i = 0; i < arr.length; i++) {
+		var e = arr[i];
+	}
+}
+ViewConstructor.prototype.addEventHandlers = function(arr) {
+	for(var i = 0; i < arr.length; i++) {
+		var h = arr[i];
+	}
 }
 ViewConstructor.prototype.setClientMessageChannelUrl = function(url) {
 	this.clientMessageChannelUrl_ = url;
