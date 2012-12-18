@@ -1,25 +1,67 @@
 
+function replacePattern(pattern, dict) {
+	var m = null;
+	var start = 0;
+	var ret = "";
+	while((m = replacePattern.TemplatingRegex.exec(pattern)) !== null) {
+		ret += pattern.substring(start, m.index);
+		
+		var str = "";
+		
+		with(dict) {
+			try {
+				str = eval(m[1]);
+			}
+			catch(e) {
+				str = "[error: '" + e.toString() + "']";
+			}
+		}
+				
+		ret += str;
+		start = m.index + m[0].length;
+	}
+	if(start < pattern.length) {
+		ret += pattern.substring(start, pattern.length);
+	}
+	
+	return ret;
+}
+replacePattern.TemplatingRegex = new RegExp("\{([^\}]+)\}", "g");
+
 function dateFromString(s) {
+	return new Date(s);
+	/*
 	var bits = s.split(/[-T:]/g);
 	var d = new Date(bits[0], bits[1]-1, bits[2]);
 	d.setHours(bits[3], bits[4], bits[5]);
 	
 	return d;
+	*/
 }
-function stringFromDate(d) {
-	function pad(n) {
+function stringFromDate(date) {
+	function pad(n, digs) {
+		if(typeof digs == "undefined") digs = 2;
+		
 		var s = n.toString();
-		return s.length < 2 ? '0'+s : s;
+		while(s.length < digs) {
+			s = '0' + s;
+		}
+		return s;
 	};
-
-	var yyyy = date.getFullYear();
-	var mm1  = pad(date.getMonth()+1);
-	var dd   = pad(date.getDate());
-	var hh   = pad(date.getHours());
-	var mm2  = pad(date.getMinutes());
-	var ss   = pad(date.getSeconds());
 	
-	return yyyy +'-' +mm1 +'-' +dd +'T' +hh +':' +mm2 +':' +ss;
+	var months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+	var yyyy = date.getUTCFullYear();
+	var MMM  = months[date.getUTCMonth()];
+	//var mm1  = pad(date.getMonth()+1);
+	var dd   = pad(date.getUTCDate());
+	var hh   = pad(date.getUTCHours());
+	var mm2  = pad(date.getUTCMinutes());
+	var ss   = pad(date.getUTCSeconds());
+	var ssss = pad(date.getUTCMilliseconds(),4);
+	
+	return dd + ' ' + MMM + ' ' + yyyy + ' ' + hh + ':' + mm2 + ':' + ss + '.' + ssss +  'UTC';
+	//return yyyy +'-' +mm1 +'-' +dd +'T' +hh +':' +mm2 +':' +ss +'.' +ssss;
 }
 
 function ClientMessageChannel(messagesUrl, since) {
@@ -29,9 +71,11 @@ function ClientMessageChannel(messagesUrl, since) {
 	this.requestInProgress = false;
 	this.since = since;
 	
-	this.intervalTime = 500;
+	this.intervalTime = 2000;
 }
 ClientMessageChannel.prototype.open = function() {
+	console.log("channel openning...");
+	
 	if(this.interval != null) return;
 	
 	var self = this;
@@ -59,7 +103,7 @@ ClientMessageChannel.prototype.oninterval = function() {
 			if(xhr.status == 200) {
 				self.onclientmessages(xhr.responseXML);
 			}
-			else if(xhr.status == 304) {
+			else if(xhr.status == 204) {
 				// do nothing, no additional data
 			}
 			else if(xhr.status >= 400 && xhr.status < 500) {
@@ -72,12 +116,13 @@ ClientMessageChannel.prototype.oninterval = function() {
 			self.requestInProgress = false;
 		}
 	}
+	xhr.send();
 }
-ClientMessageChannel.prototype.onclientmessage = function(messagesXml) {
+ClientMessageChannel.prototype.onclientmessages = function(messagesXml) {
 	console.log("found some messages!" + messagesXml);
 	
-	for(var i = 0; i < messagesXML.childNodes.length; i++) {
-		var n = messagesXML.childNodes[i];
+	for(var i = 0; i < messagesXml.childNodes.length; i++) {
+		var n = messagesXml.childNodes[i];
 		
 		if(n.localName == "messages") {
 			var latestNode = n.attributes["latestDate"];
@@ -96,21 +141,82 @@ function ViewConstructor() {
 	this.channel = null;
 	this.clientMessageChannelUrl_ = null;
 	this.serverLoadTime_ = new Date();
-	this.events_ = new Array();
-	this.handlers_ = new Array();
+	this.events_ = new Object();
+	this.handlers_ = new Object();
+	this.eventEndpoint_ = null;
+	this.gameEventEndpoint_ = null;
 	
 	var self = this;
 	window.onload = function() { self.handleLoad(); }
 }
-ViewConstructor.prototype.addEvents = function(arr) {
+ViewConstructor.prototype.setEventEndpoint = function(obj) {
+	this.eventEndpoint_ = obj;
+}
+ViewConstructor.prototype.setGameEventEndpoint = function(obj) {
+	this.gameEventEndpoint_ = obj;
+}
+ViewConstructor.prototype.registerEvents = function(arr) {
 	for(var i = 0; i < arr.length; i++) {
 		var e = arr[i];
+		
+		this.events_[e.id] = e;
 	}
 }
-ViewConstructor.prototype.addEventHandlers = function(arr) {
+ViewConstructor.prototype.registerEventHandlers = function(arr) {
 	for(var i = 0; i < arr.length; i++) {
 		var h = arr[i];
+		
+		if(typeof this.handlers_[h.event] == "undefined") {
+			this.handlers_[h.event] = new Array();
+		}
+		
+		this.handlers_[h.event].push(h);
 	}
+}
+ViewConstructor.prototype.handleEventSuccess = function(el, event, responseXML) {
+	console.log("event success: " + (responseXML ? responseXML.toString() : "null"));
+	//this.channel.oninterval();
+}
+ViewConstructor.prototype.handleEventError = function(el, event, responseXML) {
+	console.log("event error: " + responseXML ? responseXML.toString() : "null");
+}
+
+ViewConstructor.prototype.trigger = function(el, eventid) {
+	var e = this.events_[eventid];
+	
+	if(typeof e == "undefined") {
+		console.log("unknown event id: '" + eventid + "'");
+		return;
+	}
+	
+	var url = "";
+	var method = "POST";
+	if(!e.gameEvent || e.gameEvent == "") {		
+		url = replacePattern(this.eventEndpoint_.url, e);
+		method = this.eventEndpoint_.method;
+	}
+	else {
+		url = replacePattern(this.gameEventEndpoint_.url, e);
+		method = this.gameEventEndpoint_.method;
+	}
+	
+	
+	var self = this;
+	
+	var xhr = new XMLHttpRequest();
+	xhr.open(method, url, true);
+	xhr.onreadystatechange = function() {
+		if(xhr.readyState == 4) {
+			if(xhr.status == 200) {
+				self.handleEventSuccess(el, e, xhr.responseXML);
+			}
+			else if(xhr.status == 400) {
+				self.handleEventError(el, e, xhr.responseXML);
+			}
+		}
+		
+	};
+	xhr.send(e.payload);
 }
 ViewConstructor.prototype.setClientMessageChannelUrl = function(url) {
 	this.clientMessageChannelUrl_ = url;
@@ -119,6 +225,7 @@ ViewConstructor.prototype.setServerLoadTime = function(d) {
 	this.serverLoadTime_ = dateFromString(d);
 }
 ViewConstructor.prototype.handleLoad = function() {
+	console.log("View loading...");
 	if(this.clientMessageChannelUrl_ != null) {
 		if(this.serverLoadTime_ == null) this.serverLoadTime_ = new Date();
 		

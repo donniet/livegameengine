@@ -10,10 +10,8 @@
 
 	<xsl:param name="eventEndpointUrl" />
 	<xsl:param name="eventEndpointMethod" select="'POST'" />
-	<xsl:param name="joinEndpointUrl" />
-	<xsl:param name="joinEndpointMethod" select="'POST'" />
-	<xsl:param name="startEndpointUrl" />
-	<xsl:param name="startEndpointMethod" select="'POST'" />
+	<xsl:param name="gameEventEndpointUrl" />
+	<xsl:param name="gameEventEndpointMethod" select="'POST'" />
 	<xsl:param name="doctype-public" />
 	<xsl:param name="doctype-system" />
 	<xsl:param name="jsapiUrl" />
@@ -51,6 +49,8 @@
 			<script type="text/javascript">
 				View.setClientMessageChannelUrl("<xsl:value-of select="$clientMessageUrl" />");
 				View.setServerLoadTime("<xsl:value-of select="$serverTime" />");
+				View.setEventEndpoint({ "url": "<xsl:value-of select="$eventEndpointUrl" />", "method":"<xsl:value-of select="$eventEndpointMethod" />" });
+				View.setGameEventEndpoint({ "url": "<xsl:value-of select="$gameEventEndpointUrl" />", "method":"<xsl:value-of select="$gameEventEndpointMethod" />" });
 			</script>
 			
 			<xsl:apply-templates select="@*|*|text()" />	
@@ -58,9 +58,7 @@
 	</xsl:template>
 		
 	<xsl:template match="view:eventHandler" mode="content">
-		<xsl:attribute name="id">
-			<xsl:value-of select="concat('content-',generate-id(.))" />
-		</xsl:attribute>
+		<xsl:attribute name="id"><xsl:value-of select="concat('content-',generate-id(.))" /></xsl:attribute>
 		<script type="text/javascript">
 			View.registerEventHandlers([
 				{	"id": "<xsl:value-of select="generate-id(.)" />",
@@ -86,7 +84,7 @@
 					"parameters": [<xsl:for-each select="view:param">
 						{ "name": "<xsl:value-of select="@name" />", "value": "<xsl:value-of select="@value" />" },</xsl:for-each>
 					],
-					"content":"<xsl:value-of select="java:com.livegameengine.util.Util.escapeJS(java:com.livegameengine.util.Util.serializeXml(*))" />" 
+					"payload":"<xsl:value-of select="java:com.livegameengine.util.Util.escapeJS(java:com.livegameengine.util.Util.serializeXml(*))" />" 
 				},			
 			]);
 		</script>
@@ -94,10 +92,12 @@
 		
 	<xsl:template match="@*|*|text()" priority="-20">
 		<xsl:copy>
+			<xsl:apply-templates select="@*" />
+		
 			<xsl:apply-templates select="view:event" mode="content" />
 			<xsl:apply-templates select="view:eventHandler" mode="content" />
 			
-			<xsl:apply-templates select="@*|*[namespace-uri() != 'http://www.livegameengine.com/schemas/view.xsd' or (local-name() != 'eventHandler' and local-name() != 'event')]|text()" />
+			<xsl:apply-templates select="*[namespace-uri() != 'http://www.livegameengine.com/schemas/view.xsd' or (local-name() != 'eventHandler' and local-name() != 'event')]|text()" />
 		</xsl:copy>
 	</xsl:template>
 	

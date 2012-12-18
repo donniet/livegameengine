@@ -61,6 +61,7 @@ import com.livegameengine.model.Player;
 import com.livegameengine.model.Watcher;
 import com.livegameengine.persist.PMF;
 import com.livegameengine.util.AddListenersParser;
+import com.livegameengine.util.Util;
 import com.sun.org.apache.xerces.internal.dom.DocumentTypeImpl;
 import com.sun.xml.internal.fastinfoset.stax.util.StAXParserWrapper;
 
@@ -119,6 +120,20 @@ public class GameServlet extends HttpServlet {
 			OutputStream responseStream = resp.getOutputStream();
 			StreamResult responseResult = new StreamResult(responseStream);
 			
+			Map<String,Object> params = new HashMap<String,Object>();
+			
+			GameType gt = g.getGameType();
+			
+			params.put("eventEndpointUrl", "event/{event}");
+			params.put("gameEventEndpointUrl", "{gameEvent}");
+			params.put("doctype-public", config.getViewDoctypePublic());
+			params.put("doctype-system", config.getViewDoctypeSystem());
+			params.put("jsapiUrl", "/_ah/channel/jsapi");
+			params.put("version", gt.getClientVersion());
+			params.put("serverTime", config.getDateFormat().format(new Date()));
+			params.put("clientMessageUrl", "message");
+			
+			
 			if(m.group(2) == null) {
 				if(req.getMethod().equals("GET")) {
 					resp.setContentType("application/xhtml+xml");
@@ -136,20 +151,6 @@ public class GameServlet extends HttpServlet {
 						e.printStackTrace();
 					}
 					
-					Map<String,Object> params = new HashMap<String,Object>();
-					
-					GameType gt = g.getGameType();
-					
-					params.put("eventEndpointUrl", "event/{endpointEvent}");
-					params.put("startEndpointUrl", "start");
-					params.put("joinEndpointUrl", "join");
-					params.put("doctype-public", config.getViewDoctypePublic());
-					params.put("doctype-system", config.getViewDoctypeSystem());
-					params.put("jsapiUrl", "/_ah/channel/jsapi");
-					params.put("version", gt.getClientVersion());
-					params.put("serverTime", config.getDateFormat().format(new Date()));
-					params.put("clientMessageUrl", "message");
-					//params.put("userToken")
 					
 					Watcher w = g.addWatcher(u);
 					
@@ -301,7 +302,7 @@ public class GameServlet extends HttpServlet {
 				}
 			}
 			else if(m.group(2).equals("message")) {
-				if(req.getMethod().equals("POST")) {
+				if(!req.getMethod().equals("GET")) {
 					resp.setStatus(405);
 					return;
 				}
@@ -325,17 +326,20 @@ public class GameServlet extends HttpServlet {
 				List<ClientMessage> messages = ClientMessage.findClientMessagesSince(g, s);
 				
 				if(messages == null || messages.size() == 0) {
-					resp.setStatus(304);
+					resp.setStatus(204);
 					return;
 				}
 				
+								
 				Date mostRecentMessage = messages.get(messages.size() - 1).getMessageDate();
 				
 				try {
+					resp.setContentType("application/xml");
 					XMLOutputFactory factory = XMLOutputFactory.newFactory();
-					XMLStreamWriter writer = factory.createXMLStreamWriter(resp.getOutputStream());
+					XMLStreamWriter writer = factory.createXMLStreamWriter(responseStream);
 					
 					writer.writeStartDocument();
+					writer.setPrefix("", config.getGameEngineNamespace());
 									
 					writer.writeStartElement(config.getGameEngineNamespace(), "messages");
 					writer.writeNamespace("", config.getGameEngineNamespace());
@@ -345,8 +349,31 @@ public class GameServlet extends HttpServlet {
 					for(Iterator<ClientMessage> i = messages.iterator(); i.hasNext();) {
 						ClientMessage cm = i.next();
 						
-						cm.serializeToXml("message", writer);
+						Document doc2 = config.newXmlDocument();
+						XMLStreamWriter dw = factory.createXMLStreamWriter(new DOMResult(doc));
 						
+						cm.serializeToXml("message", dw);
+						
+						try {
+							config.transformDatamodel(gs, new DOMResult(doc), gu.getHashedUserId());
+							Transformer t = config.newTransformer(new StreamSource(GameServlet.class.getResourceAsStream("/tictactoe_view5.xslt")));
+							t.setURIResolver(new GameURIResolver(g));
+							t.transform(new DOMSource(doc), new DOMResult(doc1));
+						
+							String gameViewResourceUrl =  String.format("/%s/game_view.xslt", g.getGameType().getClientVersion());
+							
+							config.transformFromResource(gameViewResourceUrl, new DOMSource(doc1), new DOMResult(doc2), params);
+						} catch (TransformerConfigurationException e) {
+							resp.setStatus(500);
+							e.printStackTrace();
+						} catch (TransformerException e) {
+							e.printStackTrace();
+						}	
+						
+						for(int j = 0; j < doc2.getChildNodes().getLength(); j++) {
+							Node n = doc2.getChildNodes().item(j);
+							
+						}
 					}
 					
 					writer.writeEndElement();

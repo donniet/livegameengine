@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Random;
+import java.util.TimeZone;
 
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
@@ -117,6 +118,8 @@ public class Config implements NamespaceContext {
 			
 			dateFormatString_ = props_.getProperty("dateFormat");
 			dateFormat_ = new SimpleDateFormat(dateFormatString_);
+			dateFormat_.setTimeZone(TimeZone.getTimeZone("GMT"));
+			
 			dateTransformer_ = new DateTransformer(dateFormatString_);
 						
 			encoding_ = props_.getProperty("encoding");

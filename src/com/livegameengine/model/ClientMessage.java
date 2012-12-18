@@ -36,6 +36,7 @@ import com.google.appengine.api.datastore.Blob;
 import com.google.appengine.api.datastore.Key;
 import com.google.appengine.api.datastore.KeyFactory;
 import com.livegameengine.config.Config;
+import com.livegameengine.persist.PMF;
 import com.livegameengine.util.Util;
 
 
@@ -45,12 +46,11 @@ public class ClientMessage implements Scriptable, XmlSerializable {
 		
 	private static final String LOCAL_NAME = "clientMessage";
 	private static final String NAMESPACE_PREFIX = "game";
+	private static Config config_ = Config.getInstance();
 	
 	@NotPersistent
 	private Scriptable parent_, prototype_; 
 	
-	@NotPersistent
-	private Config config_ = Config.getInstance();
 
 	@PrimaryKey
 	@Persistent(valueStrategy = IdGeneratorStrategy.IDENTITY)
@@ -75,10 +75,10 @@ public class ClientMessage implements Scriptable, XmlSerializable {
 	private Key gameKey;
 	
 	public static List<ClientMessage> findClientMessagesSince(Game g, Date since) {
-		PersistenceManager pm = JDOHelper.getPersistenceManager(g);
+		PersistenceManager pm = PMF.getInstance().getPersistenceManager();
 		Query q = pm.newQuery(ClientMessage.class);
-		
-		q.setFilter("gameKey == gameIn && messageDate > since");
+				
+		q.setFilter("gameKey == gameKeyIn && messageDate > since");
 		q.declareParameters(Date.class.getName() + " since, " + Key.class.getName() + " gameKeyIn");
 		q.setOrdering("messageDate asc");
 		q.setRange(0,1000);

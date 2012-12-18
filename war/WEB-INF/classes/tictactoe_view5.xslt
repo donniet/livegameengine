@@ -48,13 +48,15 @@
 		</html>
 	</xsl:template>
 	
-	<xsl:template match="/game:event[name='game.update-meta']//game:players">
+	<xsl:template match="game:players">
 		<ul>
-			<xsl:apply-templates select="game:player" />	
+			<view:eventHandler event="game.playerJoin" mode="append" />
+			
+			<xsl:apply-templates select="game:player" />
 		</ul>
 	</xsl:template>
 	
-	<xsl:template match="/game:event[@name='game.playerConnectionChange']//game:player">
+	<xsl:template match="game:player">
 		<xsl:if test="game:param[@name='player']/text() = $playerid">
 			<strong>
 				<xsl:choose>
