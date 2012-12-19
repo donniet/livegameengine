@@ -8,6 +8,8 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Properties;
 
+import javax.xml.stream.XMLOutputFactory;
+import javax.xml.stream.XMLStreamWriter;
 import javax.xml.transform.ErrorListener;
 import javax.xml.transform.Result;
 import javax.xml.transform.Source;
@@ -19,13 +21,16 @@ import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamSource;
 
 import org.w3c.dom.Document;
+import org.w3c.dom.Node;
 
 import com.livegameengine.config.Config;
+import com.livegameengine.model.ClientMessage;
 import com.livegameengine.model.Game;
 import com.livegameengine.model.GameState;
 import com.livegameengine.model.GameType;
 import com.livegameengine.model.GameURIResolver;
 import com.livegameengine.model.GameUser;
+import com.livegameengine.util.Util;
 
 public class GameTransformer extends Transformer {
 	public static String PROPERTY_RAW_VIEW = "game.raw_view_property";
@@ -47,47 +52,86 @@ public class GameTransformer extends Transformer {
 	public void transform(Source xmlSource, Result outputTarget)
 			throws TransformerException {
 		
-		if(!GameSource.class.isAssignableFrom(xmlSource.getClass())) {
-			throw new TransformerException("Source not of type 'GameSource'");
-		}
-		
-		//TODO: add clientmessage handler here as well.
-		
-		GameSource s = (GameSource)xmlSource;
 		
 		Document doc = config.newXmlDocument();
 		Document doc1 = config.newXmlDocument();
 		
 		Map<String,Object> params = new HashMap<String,Object>();
-		
-		GameType gt = s.getGame().getGameType();
-		
+				
 		params.put("eventEndpointUrl", "event/{event}");
 		params.put("gameEventEndpointUrl", "{gameEvent}");
 		params.put("doctype-public", config.getViewDoctypePublic());
 		params.put("doctype-system", config.getViewDoctypeSystem());
 		params.put("jsapiUrl", "/_ah/channel/jsapi");
-		params.put("version", gt.getClientVersion());
 		params.put("serverTime", config.getDateFormat().format(new Date()));
 		params.put("clientMessageUrl", "message");
 		
-		config.transformDatamodel(s.getGameState(), new DOMResult(doc), gameUser_.getHashedUserId());
-		//TODO: replace with pulling the game view from the gametype
+		XMLOutputFactory factory = XMLOutputFactory.newFactory();
+		
 		Source frontEndSource = new StreamSource(GameTransformer.class.getResourceAsStream("/tictactoe_view5.xslt"));
 		/*
 		ByteArrayInputStream bis = new ByteArrayInputStream(gt.getFrontEnd());
 		Source frontEndSource = new StreamSource(bis);
 		*/
 						
-		Transformer t = config.newTransformer(frontEndSource);
-		t.setURIResolver(new GameURIResolver(s.getGame()));
+		Transformer frontendTrans = config.newTransformer(frontEndSource);
+		frontendTrans.setURIResolver(new GameURIResolver(s.getGame()));
 		
-		if(raw_) {
-			t.transform(new DOMSource(doc), outputTarget);
+		
+		
+		if(GameSource.class.isAssignableFrom(xmlSource.getClass())) {
+			GameSource s = (GameSource)xmlSource;
+			GameType gt = s.getGame().getGameType();
+		
+			params.put("version", gt.getClientVersion());
+			
+			config.transformDatamodel(s.getGameState(), new DOMResult(doc), gameUser_.getHashedUserId());
+			//TODO: replace with pulling the game view from the gametype
+			
+			if(raw_) {
+				frontendTrans.transform(new DOMSource(doc), outputTarget);
+			}
+			else {
+				frontendTrans.transform(new DOMSource(doc), new DOMResult(doc1));
+				config.transformFromResource(String.format("/%s/game_view.xslt", gt.getClientVersion()), new DOMSource(doc1), outputTarget, params);
+			}
 		}
-		else {
-			t.transform(new DOMSource(doc), new DOMResult(doc1));
-			config.transformFromResource(String.format("/%s/game_view.xslt", gt.getClientVersion()), new DOMSource(doc1), outputTarget, params);
+		else if(ClientMessageSource.class.isAssignableFrom(xmlSource.getClass())) {
+			ClientMessageSource s = (ClientMessageSource)xmlSource;
+			
+			Node messagesNode = doc.createElementNS(config.getGameEngineNamespace(), "messages");
+						
+			for(Iterator<ClientMessage> i = s.getMessages().iterator(); i.hasNext();) {
+				ClientMessage cm = i.next();
+				
+				doc1 = config.newXmlDocument();
+				Document doc2 = config.newXmlDocument();
+				Document doc3 = config.newXmlDocument();
+				
+				XMLStreamWriter writer = factory.createXMLStreamWriter(new DOMResult(doc1));
+				cm.serializeToXml("message", writer);
+				
+				Node content = Util.findFirstElementNode(doc1);
+				
+				
+				config.transformAsDatamodel(new DOMSource(content), new DOMResult(doc2), gameUser_.getHashedUserId());
+							
+				
+				if(raw_) {
+					frontendTrans.transform(new DOMSource(doc2), new DOMResult(doc3));
+					
+					for(int j = 0; j < doc3.getChildNodes().getLength(); j++) {
+						
+					}
+				}
+				
+				if(!i.hasNext()) {
+					Node latestDateNode = doc.createAttribute("latestDate");
+					latestDateNode.setNodeValue(config.getDateFormat().format(cm.getMessageDate()));
+					messagesNode.getAttributes().setNamedItem(latestDateNode);
+				}
+				
+			}
 		}
 	}
 

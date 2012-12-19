@@ -201,9 +201,8 @@ public class ClientMessage implements Scriptable, XmlSerializable {
 		
 		this.content = new Blob(content.getBytes());
 	}
-		
-	@Override
-	public void serializeToXml(String elementName, XMLStreamWriter writer)
+	
+	public void serializeToXml(String elementName, XMLStreamWriter writer, Node replacementContent)
 			throws XMLStreamException {
 		String ns = config_.getGameEngineNamespace();
 		
@@ -226,22 +225,35 @@ public class ClientMessage implements Scriptable, XmlSerializable {
 			writer.writeEndElement();
 		}
 		
-		if(content != null) {
+		Object c = null;
+		
+		if(replacementContent != null) {
+			c = replacementContent;
+		}
+		else if(this.content != null) {
+			c = getContent();
+		}
+		
+		if(c != null) {
 			writer.writeStartElement(ns, "content");
 			
-			Object content = getContent();
-			
 			if(String.class.isAssignableFrom(content.getClass())) {
-				writer.writeCharacters((String)content);
+				writer.writeCharacters((String)c);
 			}
 			else if(Node.class.isAssignableFrom(content.getClass())) {
-				Util.writeNode((Node)content, writer);
+				Util.writeNode((Node)c, writer);
 			}
 						
 			writer.writeEndElement();
 		}
 		
 		writer.writeEndElement();
+	}
+	
+	@Override
+	public void serializeToXml(String elementName, XMLStreamWriter writer)
+			throws XMLStreamException {
+		serializeToXml(elementName, writer, null);
 	}
 
 	@Override

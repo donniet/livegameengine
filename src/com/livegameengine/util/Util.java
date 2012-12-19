@@ -19,6 +19,18 @@ import com.livegameengine.config.Config;
 
 
 public class Util {	
+	public static Node findFirstElementNode(Node parent) {
+		for(int i = 0; i < parent.getChildNodes().getLength(); i++) {
+			Node n = parent.getChildNodes().item(i);
+			
+			if(n.getNodeType() == Node.ELEMENT_NODE) {
+				return n;
+			}
+		}
+		
+		return null;
+	}
+	
 	public static void writeNode(Node n, XMLStreamWriter writer) throws DOMException, XMLStreamException {
 		String prefix = null;
 		
