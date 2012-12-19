@@ -1,5 +1,6 @@
 package com.livegameengine.web;
 
+import java.io.ByteArrayInputStream;
 import java.security.InvalidParameterException;
 import java.util.Date;
 import java.util.HashMap;
@@ -31,8 +32,6 @@ public class GameTransformer extends Transformer {
 	
 	private static Config config = Config.getInstance();
 	
-	Game game_ = null;
-	GameState gameState_ = null;
 	GameUser gameUser_ = null;
 	boolean raw_ = false;
 	
@@ -40,28 +39,28 @@ public class GameTransformer extends Transformer {
 	Properties props_ = new Properties();
 	ErrorListener listener_ = null;
 	
-	public GameTransformer(Game game, GameUser player) {
-		game_ = game;
-		gameUser_ = player;
-		
-		gameState_ = game.getMostRecentState();
-	}
-	
-	public GameTransformer(GameState gameState, GameUser player) {
-		gameState_ = gameState;
-		game_ = Game.findUninitializedGameByKey(gameState_.getGameKey());
+	public GameTransformer(GameUser player) {
 		gameUser_ = player;
 	}
 	
 	@Override
 	public void transform(Source xmlSource, Result outputTarget)
 			throws TransformerException {
+		
+		if(!GameSource.class.isAssignableFrom(xmlSource.getClass())) {
+			throw new TransformerException("Source not of type 'GameSource'");
+		}
+		
+		//TODO: add clientmessage handler here as well.
+		
+		GameSource s = (GameSource)xmlSource;
+		
 		Document doc = config.newXmlDocument();
 		Document doc1 = config.newXmlDocument();
 		
 		Map<String,Object> params = new HashMap<String,Object>();
 		
-		GameType gt = game_.getGameType();
+		GameType gt = s.getGame().getGameType();
 		
 		params.put("eventEndpointUrl", "event/{event}");
 		params.put("gameEventEndpointUrl", "{gameEvent}");
@@ -72,10 +71,16 @@ public class GameTransformer extends Transformer {
 		params.put("serverTime", config.getDateFormat().format(new Date()));
 		params.put("clientMessageUrl", "message");
 		
-		config.transformDatamodel(gameState_, new DOMResult(doc), gameUser_.getHashedUserId());
+		config.transformDatamodel(s.getGameState(), new DOMResult(doc), gameUser_.getHashedUserId());
 		//TODO: replace with pulling the game view from the gametype
-		Transformer t = config.newTransformer(new StreamSource(GameTransformer.class.getResourceAsStream("/tictactoe_view5.xslt")));
-		t.setURIResolver(new GameURIResolver(game_));
+		Source frontEndSource = new StreamSource(GameTransformer.class.getResourceAsStream("/tictactoe_view5.xslt"));
+		/*
+		ByteArrayInputStream bis = new ByteArrayInputStream(gt.getFrontEnd());
+		Source frontEndSource = new StreamSource(bis);
+		*/
+						
+		Transformer t = config.newTransformer(frontEndSource);
+		t.setURIResolver(new GameURIResolver(s.getGame()));
 		
 		if(raw_) {
 			t.transform(new DOMSource(doc), outputTarget);

@@ -107,6 +107,13 @@ public class GameType implements Scriptable, XmlSerializable {
 	public byte[] getStateChart() {
 		return stateChart.getBytes();
 	}
+	
+	public byte[] getFrontEnd() {
+		return frontEnd.getBytes();
+	}
+	public void setFrontEnd(byte[] frontEnd) {
+		this.frontEnd = new Blob(frontEnd);
+	}
 
 	public void setCreator(GameUser creator) {		
 		this.creator = creator.getKey();

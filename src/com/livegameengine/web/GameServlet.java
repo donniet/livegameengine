@@ -119,58 +119,31 @@ public class GameServlet extends HttpServlet {
 			
 			OutputStream responseStream = resp.getOutputStream();
 			StreamResult responseResult = new StreamResult(responseStream);
-			
-			Map<String,Object> params = new HashMap<String,Object>();
-			
-			GameType gt = g.getGameType();
-			
-			params.put("eventEndpointUrl", "event/{event}");
-			params.put("gameEventEndpointUrl", "{gameEvent}");
-			params.put("doctype-public", config.getViewDoctypePublic());
-			params.put("doctype-system", config.getViewDoctypeSystem());
-			params.put("jsapiUrl", "/_ah/channel/jsapi");
-			params.put("version", gt.getClientVersion());
-			params.put("serverTime", config.getDateFormat().format(new Date()));
-			params.put("clientMessageUrl", "message");
-			
+						
 			
 			if(m.group(2) == null) {
+				if(!req.getMethod().equals("GET")) {
+					resp.setStatus(405);
+					return;
+				}
+				
+				resp.setContentType("application/xhtml+xml");
+				
+				GameSource s = new GameSource(gs);					
+				Transformer gametrans = new GameTransformer(gu);
+				
+				gametrans.transform(s, responseResult);
+			}
+			else if(m.group(2).equals("raw_view")) {
 				if(req.getMethod().equals("GET")) {
-					resp.setContentType("application/xhtml+xml");
+					resp.setContentType("text/xml");
 					
-					try {
-						config.transformDatamodel(gs, new DOMResult(doc), gu.getHashedUserId());
-						Transformer t = config.newTransformer(new StreamSource(GameServlet.class.getResourceAsStream("/tictactoe_view5.xslt")));
-						t.setURIResolver(new GameURIResolver(g));
-						t.transform(new DOMSource(doc), new DOMResult(doc1));
-					} catch (TransformerConfigurationException e) {
-						resp.setStatus(500);
-						e.printStackTrace();
-					} catch (TransformerException e) {
-						resp.setStatus(500);
-						e.printStackTrace();
-					}
+					GameSource s = new GameSource(gs);
+					Transformer gametrans = new GameTransformer(gu);
 					
+					gametrans.setOutputProperty(GameTransformer.PROPERTY_RAW_VIEW, "true");
 					
-					Watcher w = g.addWatcher(u);
-					
-					//Watcher w = Watcher.findWatcherByGameAndGameUser(g, gu);
-					if(w != null && w.getChannelkey() != null && !w.getChannelkey().equals("")) {
-						ChannelService channelService = ChannelServiceFactory.getChannelService();
-						String token = channelService.createChannel(w.getChannelkey());
-						
-						params.put("userToken", token);
-					}
-					
-					try {
-						config.transformFromResource(String.format("/%s/game_view.xslt", g.getGameType().getClientVersion()), new DOMSource(doc1), responseResult, params);
-					} catch (TransformerConfigurationException e) {
-						resp.setStatus(500);
-						e.printStackTrace();
-					} catch (TransformerException e) {
-						resp.setStatus(500);
-						e.printStackTrace();
-					}						
+					gametrans.transform(s, responseResult);
 				}
 				else {
 					resp.setStatus(405);
@@ -220,26 +193,7 @@ public class GameServlet extends HttpServlet {
 				else {
 					resp.setStatus(405);
 				}
-			}
-			else if(m.group(2).equals("raw_view")) {
-				if(req.getMethod().equals("GET")) {
-					resp.setContentType("text/xml");
-					try {
-						config.transformDatamodel(gs, new DOMResult(doc), "");
-						config.transformFromResource("/tictactoe_view5.xslt", new DOMSource(doc), responseResult);
-					} catch (TransformerConfigurationException e) {
-						resp.setStatus(500);
-						e.printStackTrace();
-					} catch (TransformerException e) {
-						resp.setStatus(500);
-						e.printStackTrace();
-					}
-				}
-				else {
-					resp.setStatus(405);
-				}
-			}
-			else if(m.group(2).equals("start")) {
+			}else if(m.group(2).equals("start")) {
 				if(req.getMethod().equals("POST")) {
 					if(u == null) {
 						resp.setStatus(403);
