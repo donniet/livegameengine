@@ -426,7 +426,7 @@ public class Config implements NamespaceContext {
 	public Transformer newTransformer(Source source) throws TransformerConfigurationException {
 		return transformerFactory_.newTransformer(source);
 	}
-	
+	/*
 	public void transformDatamodel(GameState gameState, Result result, String playerid) throws TransformerConfigurationException, TransformerException {
 		Document doc = this.newXmlDocument();
 		
@@ -447,6 +447,7 @@ public class Config implements NamespaceContext {
 		
 		transformAsDatamodel(new DOMSource(doc), result, playerid);
 	}
+	*/
 	public void transformAsDatamodel(Source source, Result result, String playerid) throws TransformerConfigurationException, TransformerException {
 		Transformer trans = transformerFactory_.newTransformer(new StreamSource(getDataModelTransformStream()));
 		trans.setParameter(this.getDataModelTransformPlayerIdParam(), playerid);				

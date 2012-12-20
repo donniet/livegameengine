@@ -28,15 +28,39 @@ function replacePattern(pattern, dict) {
 }
 replacePattern.TemplatingRegex = new RegExp("\{([^\}]+)\}", "g");
 
+var iso8601datepattern = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})\.(\d+)((([-+])(\d{2}):(\d{2}))|UTC|GMT|Z)$/;
+
 function dateFromString(s) {
-	return new Date(s);
-	/*
-	var bits = s.split(/[-T:]/g);
-	var d = new Date(bits[0], bits[1]-1, bits[2]);
-	d.setHours(bits[3], bits[4], bits[5]);
+	var m = iso8601datepattern.exec(s);
 	
-	return d;
-	*/
+	if(m) {	
+		var millis = Math.floor(1000.0 * parseInt(m[7]) / Math.pow(10, m[7].length));
+		
+		var d = Date.UTC(
+			parseInt(m[1]), parseInt(m[2])-1, parseInt(m[3]),
+			parseInt(m[4]), parseInt(m[5]), parseInt(m[6]), millis);
+		
+		switch(m[8]) {
+		case "UTC":
+		case "GMT":
+		case "Z":
+			break;
+		default:
+			var minutes = parseInt(m[11]) * 60 + parseInt(m[12]);
+			
+			if(m[10] == "-") {
+				d -= minutes * 60000;
+			}
+			else {
+				d += minutes * 60000;
+			}
+			break;
+		}
+		
+		return new Date(d);
+	}
+	
+	return null;
 }
 function stringFromDate(date) {
 	function pad(n, digs) {
@@ -49,19 +73,20 @@ function stringFromDate(date) {
 		return s;
 	};
 	
-	var months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+	//var months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 	var yyyy = date.getUTCFullYear();
-	var MMM  = months[date.getUTCMonth()];
-	//var mm1  = pad(date.getMonth()+1);
+	//var MMM  = months[date.getUTCMonth()];
+	var MM  = pad(date.getMonth()+1);
 	var dd   = pad(date.getUTCDate());
 	var hh   = pad(date.getUTCHours());
-	var mm2  = pad(date.getUTCMinutes());
+	var mm  = pad(date.getUTCMinutes());
 	var ss   = pad(date.getUTCSeconds());
 	var ssss = pad(date.getUTCMilliseconds(),4);
 	
-	return dd + ' ' + MMM + ' ' + yyyy + ' ' + hh + ':' + mm2 + ':' + ss + '.' + ssss +  'UTC';
+	//return dd + ' ' + MMM + ' ' + yyyy + ' ' + hh + ':' + mm2 + ':' + ss + '.' + ssss +  'GMT';
 	//return yyyy +'-' +mm1 +'-' +dd +'T' +hh +':' +mm2 +':' +ss +'.' +ssss;
+	return yyyy + "-" + MM + "-" + dd + "T" + hh + ":" + mm + ":" + ss + "." + ssss + "GMT";
 }
 
 function ClientMessageChannel(messagesUrl, since) {
@@ -175,7 +200,7 @@ ViewConstructor.prototype.registerEventHandlers = function(arr) {
 }
 ViewConstructor.prototype.handleEventSuccess = function(el, event, responseXML) {
 	console.log("event success: " + (responseXML ? responseXML.toString() : "null"));
-	//this.channel.oninterval();
+	this.channel.oninterval();
 }
 ViewConstructor.prototype.handleEventError = function(el, event, responseXML) {
 	console.log("event error: " + responseXML ? responseXML.toString() : "null");
@@ -230,7 +255,7 @@ ViewConstructor.prototype.handleLoad = function() {
 		if(this.serverLoadTime_ == null) this.serverLoadTime_ = new Date();
 		
 		this.channel = new ClientMessageChannel(this.clientMessageChannelUrl_, this.serverLoadTime_);
-		this.channel.open();
+		//this.channel.open();
 	}
 }
 View = new ViewConstructor();

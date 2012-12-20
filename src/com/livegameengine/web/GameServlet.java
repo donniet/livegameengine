@@ -131,8 +131,12 @@ public class GameServlet extends HttpServlet {
 				
 				GameSource s = new GameSource(gs);					
 				Transformer gametrans = new GameTransformer(gu);
-				
-				gametrans.transform(s, responseResult);
+
+				try {
+					gametrans.transform(s, responseResult);
+				} catch (TransformerException e) {
+					throw new IOException(e);
+				}
 			}
 			else if(m.group(2).equals("raw_view")) {
 				if(req.getMethod().equals("GET")) {
@@ -141,9 +145,13 @@ public class GameServlet extends HttpServlet {
 					GameSource s = new GameSource(gs);
 					Transformer gametrans = new GameTransformer(gu);
 					
-					gametrans.setOutputProperty(GameTransformer.PROPERTY_RAW_VIEW, "true");
-					
-					gametrans.transform(s, responseResult);
+					gametrans.setOutputProperty(GameTransformer.PROPERTY_OUTPUT_TYPE, "Raw");
+
+					try {
+						gametrans.transform(s, responseResult);
+					} catch (TransformerException e) {
+						throw new IOException(e);
+					}
 				}
 				else {
 					resp.setStatus(405);
@@ -152,14 +160,16 @@ public class GameServlet extends HttpServlet {
 			else if(m.group(2).equals("data")) {
 				if(req.getMethod().equals("GET")) {
 					resp.setContentType("text/xml");
+					
+					GameSource s = new GameSource(gs);
+					Transformer gametrans = new GameTransformer(gu);
+					
+					gametrans.setOutputProperty(GameTransformer.PROPERTY_OUTPUT_TYPE, "Data");
+					
 					try {
-						config.transformDatamodel(gs, responseResult, "");
-					} catch (TransformerConfigurationException e) {
-						resp.setStatus(500);
-						e.printStackTrace();
+						gametrans.transform(s, responseResult);
 					} catch (TransformerException e) {
-						resp.setStatus(500);
-						e.printStackTrace();
+						throw new IOException(e);
 					}
 				}
 				else {
@@ -168,8 +178,7 @@ public class GameServlet extends HttpServlet {
 			}
 			else if(m.group(2).equals("meta")) {
 				if(req.getMethod().equals("GET")) {
-					resp.setContentType("text/xml");
-					
+					resp.setContentType("text/xml");			
 					
 					
 					XMLOutputFactory factory = XMLOutputFactory.newFactory();
@@ -284,57 +293,15 @@ public class GameServlet extends HttpServlet {
 					return;
 				}
 				
-								
-				Date mostRecentMessage = messages.get(messages.size() - 1).getMessageDate();
+				ClientMessageSource so = new ClientMessageSource(messages);
+				Transformer gametrans = new GameTransformer(gu);
+				
+				gametrans.setOutputProperty(GameTransformer.PROPERTY_OUTPUT_TYPE, "View");
+				
 				
 				try {
-					resp.setContentType("application/xml");
-					XMLOutputFactory factory = XMLOutputFactory.newFactory();
-					XMLStreamWriter writer = factory.createXMLStreamWriter(responseStream);
-					
-					writer.writeStartDocument();
-					writer.setPrefix("", config.getGameEngineNamespace());
-									
-					writer.writeStartElement(config.getGameEngineNamespace(), "messages");
-					writer.writeNamespace("", config.getGameEngineNamespace());
-					
-					writer.writeAttribute("latestDate", config.getDateFormat().format(mostRecentMessage));
-					
-					for(Iterator<ClientMessage> i = messages.iterator(); i.hasNext();) {
-						ClientMessage cm = i.next();
-						
-						Document doc2 = config.newXmlDocument();
-						XMLStreamWriter dw = factory.createXMLStreamWriter(new DOMResult(doc));
-						
-						cm.serializeToXml("message", dw);
-						
-						try {
-							config.transformDatamodel(gs, new DOMResult(doc), gu.getHashedUserId());
-							Transformer t = config.newTransformer(new StreamSource(GameServlet.class.getResourceAsStream("/tictactoe_view5.xslt")));
-							t.setURIResolver(new GameURIResolver(g));
-							t.transform(new DOMSource(doc), new DOMResult(doc1));
-						
-							String gameViewResourceUrl =  String.format("/%s/game_view.xslt", g.getGameType().getClientVersion());
-							
-							config.transformFromResource(gameViewResourceUrl, new DOMSource(doc1), new DOMResult(doc2), params);
-						} catch (TransformerConfigurationException e) {
-							resp.setStatus(500);
-							e.printStackTrace();
-						} catch (TransformerException e) {
-							e.printStackTrace();
-						}	
-						
-						for(int j = 0; j < doc2.getChildNodes().getLength(); j++) {
-							Node n = doc2.getChildNodes().item(j);
-							
-						}
-					}
-					
-					writer.writeEndElement();
-					writer.writeEndDocument();
-					writer.flush();
-				}
-				catch(XMLStreamException e) {
+					gametrans.transform(so, responseResult);
+				} catch (TransformerException e) {
 					throw new IOException(e);
 				}
 				

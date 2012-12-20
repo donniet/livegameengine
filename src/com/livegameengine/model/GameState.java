@@ -80,6 +80,9 @@ public class GameState implements Scriptable, XmlSerializable {
 	private Set<String> stateSet;
 	
 	protected GameState(Game game) {
+		if(game.getKey() == null) {
+			throw new IllegalArgumentException("game not persisted");
+		}
 		this.gameKey = game.getKey();
 		stateDate = new Date();
 		datamodel = new ArrayList<GameStateData>();

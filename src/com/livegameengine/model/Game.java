@@ -300,6 +300,14 @@ public class Game implements Scriptable, EventDispatcher, SCXMLListener, XmlSeri
 
 	public GameState persistGameState(boolean isImportant) {
 		//GameState.deleteOldStatesForGame(this);
+		PersistenceManager pmf = JDOHelper.getPersistenceManager(this);
+		if(pmf == null) {
+			pmf = PMF.getInstance().getPersistenceManager();
+		}
+		
+		if(this.getKey() == null) {
+			pmf.makePersistent(this);
+		}
 		
 		final GameState gs = new GameState(this);
 		
@@ -311,11 +319,6 @@ public class Game implements Scriptable, EventDispatcher, SCXMLListener, XmlSeri
 		gs.extractFrom(scxml.getDatamodel(), cxt);
 		gs.setImportant(isImportant_ || isImportant);
 		
-		PersistenceManager pmf = JDOHelper.getPersistenceManager(this);
-		
-		if(pmf == null) {
-			pmf = PMF.getInstance().getPersistenceManager();
-		}
 		
 		
 		GameState saved = null;

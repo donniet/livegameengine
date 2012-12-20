@@ -83,7 +83,7 @@ public class ClientMessage implements Scriptable, XmlSerializable {
 		q.setOrdering("messageDate asc");
 		q.setRange(0,1000);
 		
-		return (List<ClientMessage>)q.execute(g.getKey(), since);		
+		return (List<ClientMessage>)q.execute(since, g.getKey());		
 	}
 	
 	public ClientMessage(Game g, String name, Map<String,String> params) {
