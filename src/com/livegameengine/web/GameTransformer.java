@@ -25,6 +25,7 @@ import javax.xml.transform.stream.StreamSource;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 
+import com.google.appengine.api.datastore.Key;
 import com.livegameengine.config.Config;
 import com.livegameengine.model.ClientMessage;
 import com.livegameengine.model.Game;
@@ -102,9 +103,18 @@ public class GameTransformer extends Transformer {
 				doc.appendChild(messagesNode);
 				
 				XMLStreamWriter messagewriter = factory.createXMLStreamWriter(new DOMResult(messagesNode));
-							
+				
+				Key lastKey = null;
+				Game g = null;
+				
+				
 				for(Iterator<ClientMessage> i = s.getMessages().iterator(); i.hasNext();) {
 					ClientMessage cm = i.next();
+					
+					if(lastKey != cm.getGameKey()) {
+						lastKey = cm.getGameKey();
+						g = Game.findUninitializedGameByKey(lastKey);
+					}
 					
 					Document doc1 = config.newXmlDocument();
 					Document doc2 = config.newXmlDocument();
@@ -114,7 +124,7 @@ public class GameTransformer extends Transformer {
 					
 					Node content = Util.findFirstElementNode(doc1);
 					
-					transform_xml_helper(new DOMSource(content), new DOMResult(doc2), Game.findUninitializedGameByKey(cm.getGameKey()));
+					transform_xml_helper(new DOMSource(content), new DOMResult(doc2), g);
 					
 					Node transformedContent = Util.findFirstElementNode(doc2);
 					
@@ -147,6 +157,8 @@ public class GameTransformer extends Transformer {
 			throws TransformerException {
 		Document doc = config.newXmlDocument();
 		Document doc1 = config.newXmlDocument();
+		
+		DOMResult res1 = new DOMResult();
 				
 		Source frontEndSource = new StreamSource(GameTransformer.class.getResourceAsStream("/tictactoe_view5.xslt"));
 		/*
@@ -170,7 +182,8 @@ public class GameTransformer extends Transformer {
 		GameType gt = g.getGameType();
 		
 		params.put("version", gt.getClientVersion());
-					
+			
+		String frontendResourceName = String.format("/%s/game_view.xslt", gt.getClientVersion());
 				
 		switch(outputType_) {
 		case Data:
@@ -181,9 +194,10 @@ public class GameTransformer extends Transformer {
 			frontendTrans.transform(new DOMSource(doc), outputTarget);
 			break;
 		case View:
+			
 			config.transformAsDatamodel(xmlSource, new DOMResult(doc), gameUser_.getHashedUserId());
-			frontendTrans.transform(new DOMSource(doc), new DOMResult(doc1));
-			config.transformFromResource(String.format("/%s/game_view.xslt", gt.getClientVersion()), new DOMSource(doc1), outputTarget, params);
+			frontendTrans.transform(new DOMSource(doc), res1);
+			config.transformFromResource(frontendResourceName, new DOMSource(res1.getNode()), outputTarget, params);
 			break;
 		}
 	}

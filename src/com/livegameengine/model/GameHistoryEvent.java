@@ -10,7 +10,7 @@ import javax.jdo.annotations.PrimaryKey;
 import com.google.appengine.api.datastore.Key;
 
 @PersistenceCapable
-public class GameHistoryEvent {
+public class GameHistoryEvent { 
 	private static final long serialVersionUID = 1;
 	
 	@PrimaryKey

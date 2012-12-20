@@ -206,6 +206,10 @@ public class ClientMessage implements Scriptable, XmlSerializable {
 			throws XMLStreamException {
 		String ns = config_.getGameEngineNamespace();
 		
+		if(writer.getPrefix(ns) == null) {
+			writer.setPrefix(config_.getGameEngineDefaultNamespacePrefix(), config_.getGameEngineNamespace());
+		}
+		
 		writer.writeStartElement(ns, elementName);
 		writer.writeAttribute("key", KeyFactory.keyToString(key));
 		

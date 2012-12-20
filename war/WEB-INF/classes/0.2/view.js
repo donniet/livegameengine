@@ -144,7 +144,9 @@ ClientMessageChannel.prototype.oninterval = function() {
 	xhr.send();
 }
 ClientMessageChannel.prototype.onclientmessages = function(messagesXml) {
-	console.log("found some messages!" + messagesXml);
+	var ser = new XMLSerializer();
+	
+	console.log("messages: " + ser.serializeToString(messagesXml));
 	
 	for(var i = 0; i < messagesXml.childNodes.length; i++) {
 		var n = messagesXml.childNodes[i];

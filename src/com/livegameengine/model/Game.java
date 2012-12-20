@@ -112,7 +112,7 @@ import javax.xml.transform.stream.StreamResult;
 import javax.xml.transform.stream.StreamSource;
 
 
-@PersistenceCapable(detachable = "true")
+@PersistenceCapable(detachable = "true") 
 //@FetchGroup(name = "GameGroup", members = { @Persistent(name="players") })
 public class Game implements Scriptable, EventDispatcher, SCXMLListener, XmlSerializable {
 	@NotPersistent
