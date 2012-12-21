@@ -1,6 +1,9 @@
 package com.livegameengine.web;
 
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.security.InvalidParameterException;
 import java.util.Date;
 import java.util.HashMap;
@@ -9,10 +12,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
+import javax.xml.parsers.DocumentBuilder;
 import javax.xml.stream.XMLOutputFactory;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
 import javax.xml.transform.ErrorListener;
+import javax.xml.transform.OutputKeys;
 import javax.xml.transform.Result;
 import javax.xml.transform.Source;
 import javax.xml.transform.Transformer;
@@ -20,10 +25,16 @@ import javax.xml.transform.TransformerException;
 import javax.xml.transform.URIResolver;
 import javax.xml.transform.dom.DOMResult;
 import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
 import javax.xml.transform.stream.StreamSource;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.w3c.dom.Document;
+import org.w3c.dom.DocumentFragment;
 import org.w3c.dom.Node;
+import org.xml.sax.InputSource;
+import org.xml.sax.SAXException;
 
 import com.google.appengine.api.datastore.Key;
 import com.livegameengine.config.Config;
@@ -43,6 +54,8 @@ public class GameTransformer extends Transformer {
 	public static String PROPERTY_OUTPUT_TYPE_DATA = "Data";
 		
 	private static Config config = Config.getInstance();
+	
+	Log log = LogFactory.getLog(GameTransformer.class);
 	
 	public enum OutputType {
 		View, Raw, Data
@@ -156,18 +169,23 @@ public class GameTransformer extends Transformer {
 	private void transform_xml_helper(Source xmlSource, Result outputTarget, Game g)
 			throws TransformerException {
 		Document doc = config.newXmlDocument();
-		Document doc1 = config.newXmlDocument();
 		
-		DOMResult res1 = new DOMResult();
+		GameType gt = g.getGameType();
+		
+		ByteArrayOutputStream bos = new ByteArrayOutputStream();
+		
+		Result res1 = new StreamResult(bos);
 				
 		Source frontEndSource = new StreamSource(GameTransformer.class.getResourceAsStream("/tictactoe_view5.xslt"));
 		/*
 		ByteArrayInputStream bis = new ByteArrayInputStream(gt.getFrontEnd());
 		Source frontEndSource = new StreamSource(bis);
 		*/
-		
+
+		String viewResourceName = String.format("/%s/game_view.xslt", gt.getClientVersion());
+				
 		Transformer frontendTrans = config.newTransformer(frontEndSource);
-		Transformer identitytrans = config.newTransformer();
+		//frontendTrans.setOutputProperty(OutputKeys.OMIT_XML_DECLARATION, "yes");
 				
 		Map<String,Object> params = new HashMap<String,Object>();
 		
@@ -178,12 +196,8 @@ public class GameTransformer extends Transformer {
 		params.put("jsapiUrl", "/_ah/channel/jsapi");
 		params.put("serverTime", config.getDateFormat().format(new Date()));
 		params.put("clientMessageUrl", "message");
-				
-		GameType gt = g.getGameType();
 		
 		params.put("version", gt.getClientVersion());
-			
-		String frontendResourceName = String.format("/%s/game_view.xslt", gt.getClientVersion());
 				
 		switch(outputType_) {
 		case Data:
@@ -194,10 +208,36 @@ public class GameTransformer extends Transformer {
 			frontendTrans.transform(new DOMSource(doc), outputTarget);
 			break;
 		case View:
-			
 			config.transformAsDatamodel(xmlSource, new DOMResult(doc), gameUser_.getHashedUserId());
 			frontendTrans.transform(new DOMSource(doc), res1);
-			config.transformFromResource(frontendResourceName, new DOMSource(res1.getNode()), outputTarget, params);
+			log.info("content: " + bos.toString());
+			
+			Document front = null;
+			DocumentBuilder db = config.getDocumentBuilder();
+			InputStream frontStream = new ByteArrayInputStream(bos.toByteArray());
+			
+			try {
+				front = db.parse(frontStream);
+			} catch(SAXException e) {
+				front = null;
+			} catch (IOException e) {
+				throw new TransformerException(e);
+			}
+			
+			if(front == null) {
+				log.info("front is null.");
+				front = config.newXmlDocument();
+				
+				Node root = front.createElementNS(config.getGameEngineNamespace(), "value");
+				root.appendChild(front.createTextNode(bos.toString()));
+				
+				front.appendChild(root);
+				config.transformFromResource(viewResourceName, new DOMSource(front.getDocumentElement()), outputTarget, params);
+			}
+			else {
+				config.transformFromResource(viewResourceName, new StreamSource(new ByteArrayInputStream(bos.toByteArray())), outputTarget, params);
+			}
+			
 			break;
 		}
 	}

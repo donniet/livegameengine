@@ -30,7 +30,12 @@
 </xsl:text>
 	</xsl:template>
 	
-	<xsl:template match="/html:html">
+	<xsl:template match="/">
+		<xsl:comment>TEST!!!</xsl:comment>
+		<xsl:apply-templates />
+	</xsl:template>
+	
+	<xsl:template match="html:html">
 		<xsl:call-template name="write-doctype" />
 		<xsl:copy>
 			<xsl:apply-templates select="@*|*|text()" />
