@@ -29,12 +29,7 @@
 &lt;!DOCTYPE html PUBLIC &quot;</xsl:text><xsl:value-of select="$doctype-public" /><xsl:text disable-output-escaping="yes">&quot; &quot;</xsl:text><xsl:value-of select="$doctype-system" /><xsl:text disable-output-escaping="yes">&quot; &gt;
 </xsl:text>
 	</xsl:template>
-	
-	<xsl:template match="/">
-		<xsl:comment>TEST!!!</xsl:comment>
-		<xsl:apply-templates />
-	</xsl:template>
-	
+		
 	<xsl:template match="html:html">
 		<xsl:call-template name="write-doctype" />
 		<xsl:copy>
@@ -84,7 +79,7 @@
 		<script type="text/javascript">
 			View.registerEvents([
 				{	"id": "<xsl:value-of select="generate-id(.)" />",
-					"event": "<xsl:value-of select="@event" />",
+					"event": "<xsl:value-of select="@on" />",
 					"gameEvent": "<xsl:value-of select="@gameEvent" />", 
 					"parameters": [<xsl:for-each select="view:param">
 						{ "name": "<xsl:value-of select="@name" />", "value": "<xsl:value-of select="@value" />" },</xsl:for-each>

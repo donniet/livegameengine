@@ -185,6 +185,9 @@ public class GameTransformer extends Transformer {
 		String viewResourceName = String.format("/%s/game_view.xslt", gt.getClientVersion());
 				
 		Transformer frontendTrans = config.newTransformer(frontEndSource);
+		frontendTrans.setOutputProperty(OutputKeys.METHOD, "xml");
+		frontendTrans.setOutputProperty(OutputKeys.MEDIA_TYPE, "application/xml");
+		
 		//frontendTrans.setOutputProperty(OutputKeys.OMIT_XML_DECLARATION, "yes");
 				
 		Map<String,Object> params = new HashMap<String,Object>();
@@ -223,7 +226,7 @@ public class GameTransformer extends Transformer {
 			} catch (IOException e) {
 				throw new TransformerException(e);
 			}
-			
+						
 			if(front == null) {
 				log.info("front is null.");
 				front = config.newXmlDocument();
@@ -232,11 +235,10 @@ public class GameTransformer extends Transformer {
 				root.appendChild(front.createTextNode(bos.toString()));
 				
 				front.appendChild(root);
-				config.transformFromResource(viewResourceName, new DOMSource(front.getDocumentElement()), outputTarget, params);
+				
 			}
-			else {
-				config.transformFromResource(viewResourceName, new StreamSource(new ByteArrayInputStream(bos.toByteArray())), outputTarget, params);
-			}
+			
+			config.transformFromResource(viewResourceName, new DOMSource(front), outputTarget, params);
 			
 			break;
 		}

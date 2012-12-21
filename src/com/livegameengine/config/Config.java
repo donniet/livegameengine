@@ -157,6 +157,8 @@ public class Config implements NamespaceContext {
 			
 			transformerFactory_ = TransformerFactory.newInstance();
 			documentBuilderFactory_ = DocumentBuilderFactory.newInstance();
+			documentBuilderFactory_.setNamespaceAware(true);
+			
 			documentBuilder_ = documentBuilderFactory_.newDocumentBuilder();
 			
 			viewDoctypeName_ = props_.getProperty("viewDoctypeName");
