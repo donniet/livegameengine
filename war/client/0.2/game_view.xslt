@@ -45,6 +45,7 @@
 	
 	<xsl:template match="html:head">
 		<xsl:copy>
+			<script type="text/javascript" src="/client/{$version}/event.js"></script>
 			<script type="text/javascript" src="/client/{$version}/view.js"></script>
 			<script type="text/javascript">
 				View.setClientMessageChannelUrl("<xsl:value-of select="$clientMessageUrl" />");
@@ -64,6 +65,7 @@
 				{	"id": "<xsl:value-of select="generate-id(.)" />",
 					"mode": "<xsl:value-of select="@mode" />",
 					"event": "<xsl:value-of select="@event" />",
+					"condition": "<xsl:value-of select="java:com.livegameengine.util.Util.escapeJS(@condition)" />",
 					"parameters": [<xsl:for-each select="view:param">
 						{ "name": "<xsl:value-of select="@name" />", "value": "<xsl:value-of select="@value" />" },</xsl:for-each>
 					],
@@ -79,7 +81,7 @@
 		<script type="text/javascript">
 			View.registerEvents([
 				{	"id": "<xsl:value-of select="generate-id(.)" />",
-					"event": "<xsl:value-of select="@event" />",
+					"event": "<xsl:value-of select="@on" />",
 					"gameEvent": "<xsl:value-of select="@gameEvent" />", 
 					"parameters": [<xsl:for-each select="view:param">
 						{ "name": "<xsl:value-of select="@name" />", "value": "<xsl:value-of select="@value" />" },</xsl:for-each>

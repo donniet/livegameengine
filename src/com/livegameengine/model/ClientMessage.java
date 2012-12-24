@@ -5,6 +5,7 @@ import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -138,6 +139,39 @@ public class ClientMessage implements Scriptable, XmlSerializable {
 		this.gameKey = gameKey;
 	}
 	
+	public Iterator<NameValuePair<String>> getParameterIterator() {
+		final ClientMessage self = this;
+		
+		return new Iterator<NameValuePair<String>>() {
+			private int index = 0;
+
+			@Override
+			public boolean hasNext() {
+				return index < parameterNames.size();
+			}
+
+			@Override
+			public NameValuePair<String> next() {
+				return self.getParameter(index++);
+			}
+
+			@Override
+			public void remove() {}
+			
+		};
+	}
+	
+	public Map<String,String> getParametersAsMap() {
+		Map<String,String> params = new HashMap<String,String>();
+		for(Iterator<NameValuePair<String>> j = this.getParameterIterator(); j.hasNext();) {
+			NameValuePair<String> p = j.next();
+			
+			params.put(p.getName(), p.getValue());						
+		}
+		
+		return params;
+	}
+	
 	public NameValuePair<String> getParameter(int i) {
 		if(i >= 0 && i < parameterNames.size()) {
 			return new NameValuePair<String>(parameterNames.get(i), parameterValues.get(i));
@@ -241,10 +275,10 @@ public class ClientMessage implements Scriptable, XmlSerializable {
 		if(c != null) {
 			writer.writeStartElement(ns, "content");
 			
-			if(String.class.isAssignableFrom(content.getClass())) {
+			if(String.class.isAssignableFrom(c.getClass())) {
 				writer.writeCharacters((String)c);
 			}
-			else if(Node.class.isAssignableFrom(content.getClass())) {
+			else if(Node.class.isAssignableFrom(c.getClass())) {
 				Util.writeNode((Node)c, writer);
 			}
 						

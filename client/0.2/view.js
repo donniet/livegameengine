@@ -89,6 +89,76 @@ function stringFromDate(date) {
 	return yyyy + "-" + MM + "-" + dd + "T" + hh + ":" + mm + ":" + ss + "." + ssss + "GMT";
 }
 
+
+function nodeText(node) {
+	if(!node) return null;
+	
+	var ret = "";
+	for(var i = 0; i < node.childNodes.length; i++) {
+		var n = node.childNodes[i];
+		if(n.nodeType == Node.TEXT_NODE) {
+			ret += n.nodeValue;
+		}
+	}
+	return ret;
+}
+
+function emptyNode(node) {
+	while(node.firstChild) {
+		node.removeChild(node.firstChild);
+	}
+}
+
+function forChildNodes(node, nodehandlers, scope) {
+	if(!scope) scope = this;
+	
+	if(node && nodehandlers) for(var i = 0; i < node.childNodes.length; i++) {
+		var n = node.childNodes[i];
+		if(n.localName) {
+			var handler = nodehandlers[n.localName];
+			if(typeof handler == "function") {
+				handler.apply(scope, [n]);
+			}
+		}
+	}
+}
+
+function ClientMessage(n) {
+	this.messageDate = null;
+	this.key = null;
+	this.event = null;
+	this.params = new Object();
+	this.content = null;
+			
+	this.parse(n);
+}
+ClientMessage.prototype.parse = function(node) {
+	if(!node) return;
+	
+	var keyAttr = node.attributes["key"];
+	if(keyAttr) this.key = keyAttr.nodeValue;
+	
+	forChildNodes(node, {
+		"messageDate": function(node) {
+			this.messageDate = dateFromString(nodeText(node));
+		},
+		"event": function(node) {
+			this.event = nodeText(node);
+		},
+		"param": function(node) {
+			var nameAttr = node.attributes["name"];
+			console.log("nameAttr: " + nameAttr);
+			console.log("this.params: " + this.params);
+			if(nameAttr) {
+				this.params[nameAttr.nodeValue] = nodeText(node);
+			}
+		},
+		"content": function(node) {
+			this.content = node;
+		}
+	}, this);
+}
+
 function ClientMessageChannel(messagesUrl, since) {
 	this.messagesUrl = messagesUrl;
 	this.messagesMethod = "GET";
@@ -148,17 +218,22 @@ ClientMessageChannel.prototype.onclientmessages = function(messagesXml) {
 	
 	console.log("messages: " + ser.serializeToString(messagesXml));
 	
-	for(var i = 0; i < messagesXml.childNodes.length; i++) {
-		var n = messagesXml.childNodes[i];
-		
-		if(n.localName == "messages") {
-			var latestNode = n.attributes["latestDate"];
+	forChildNodes(messagesXml, {
+		"messages": function(messagesNode) {
+			var latestNode = messagesNode.attributes["latestDate"];
 			if(latestNode) {
 				this.since = dateFromString(latestNode.value);
 			}
+			
+			forChildNodes(messagesNode, {
+				"message": function(messageNode) {
+					Event.fire(this, "clientmessage", [new ClientMessage(messageNode)]);
+				}
+			}, this);
 		}
-	}
+	}, this);
 }
+ClientMessageChannel.prototype.handleClientMessage
 ClientMessageChannel.prototype.onerror = function(errorXml) {
 	console.log("there was an error, shutting down...");
 	this.close();
@@ -193,6 +268,8 @@ ViewConstructor.prototype.registerEventHandlers = function(arr) {
 	for(var i = 0; i < arr.length; i++) {
 		var h = arr[i];
 		
+		console.log("registering handler: " + h.event);
+		
 		if(typeof this.handlers_[h.event] == "undefined") {
 			this.handlers_[h.event] = new Array();
 		}
@@ -200,6 +277,55 @@ ViewConstructor.prototype.registerEventHandlers = function(arr) {
 		this.handlers_[h.event].push(h);
 	}
 }
+
+ViewConstructor.prototype.handleClientMessage = function(clientMessage) {
+	console.log("handling client message: " + clientMessage);
+	
+	if(!clientMessage) return;
+	
+	console.log("clientMessage event: " + clientMessage.event);
+	
+	var handlers = this.handlers_[clientMessage.event];
+	
+	console.log("handler: " + handlers);
+	
+	if(handlers && handlers.length > 0) {
+		for(var i = 0; i < handlers.length; i++) {
+			var h = handlers[i];
+			
+			if(h.condition != "") {
+				var r = false;
+				with(clientMessage) {
+					try {
+						r = eval(h.condition);
+					}
+					catch(e) {
+						r = false;
+					}
+				}
+				
+				if(!r) {
+					continue;
+				}
+			}
+			
+			console.log("found a handler: " + h);
+			
+			var el = document.getElementById("content-" + h.id);
+			
+			if(!el) continue;
+			
+			if(h.mode == "replace") {
+				emptyNode(el);
+			}
+			
+			var adopted = document.adoptNode(clientMessage.content);
+			
+			el.appendChild(adopted);
+		}
+	}
+}
+
 ViewConstructor.prototype.handleEventSuccess = function(el, event, responseXML) {
 	console.log("event success: " + (responseXML ? responseXML.toString() : "null"));
 	this.channel.oninterval();
@@ -252,11 +378,16 @@ ViewConstructor.prototype.setServerLoadTime = function(d) {
 	this.serverLoadTime_ = dateFromString(d);
 }
 ViewConstructor.prototype.handleLoad = function() {
+	var self = this;
+	
 	console.log("View loading...");
 	if(this.clientMessageChannelUrl_ != null) {
 		if(this.serverLoadTime_ == null) this.serverLoadTime_ = new Date();
 		
 		this.channel = new ClientMessageChannel(this.clientMessageChannelUrl_, this.serverLoadTime_);
+		Event.addListener(this.channel, "clientmessage", function(clientMessage) {
+			self.handleClientMessage(clientMessage);
+		});
 		//this.channel.open();
 	}
 }

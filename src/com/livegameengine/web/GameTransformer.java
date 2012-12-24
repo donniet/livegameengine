@@ -45,6 +45,7 @@ import com.livegameengine.model.GameStateData;
 import com.livegameengine.model.GameType;
 import com.livegameengine.model.GameURIResolver;
 import com.livegameengine.model.GameUser;
+import com.livegameengine.model.NameValuePair;
 import com.livegameengine.util.Util;
 
 public class GameTransformer extends Transformer {
@@ -136,8 +137,8 @@ public class GameTransformer extends Transformer {
 					cm.serializeToXml("message", doc1writer);
 					
 					Node content = Util.findFirstElementNode(doc1);
-					
-					transform_xml_helper(new DOMSource(content), new DOMResult(doc2), g);
+										
+					transform_xml_helper(new DOMSource(content), new DOMResult(doc2), g, cm.getParametersAsMap());
 					
 					Node transformedContent = Util.findFirstElementNode(doc2);
 					
@@ -168,6 +169,19 @@ public class GameTransformer extends Transformer {
 	
 	private void transform_xml_helper(Source xmlSource, Result outputTarget, Game g)
 			throws TransformerException {
+		transform_xml_helper(xmlSource, outputTarget, g, null);
+	}
+	
+	private void transform_xml_helper(Source xmlSource, Result outputTarget, Game g, Map<String,String> viewParams)
+			throws TransformerException {
+		
+		Transformer ident = config.newTransformer();
+		ByteArrayOutputStream temp = new ByteArrayOutputStream();
+		
+		ident.transform(xmlSource, new StreamResult(temp));
+		
+		log.info("source: " + temp.toString());
+		
 		Document doc = config.newXmlDocument();
 		
 		GameType gt = g.getGameType();
@@ -188,6 +202,15 @@ public class GameTransformer extends Transformer {
 		frontendTrans.setOutputProperty(OutputKeys.METHOD, "xml");
 		frontendTrans.setOutputProperty(OutputKeys.MEDIA_TYPE, "application/xml");
 		
+		if(viewParams != null) {
+			for(Iterator<String> i = viewParams.keySet().iterator(); i.hasNext();) {
+				String key = i.next();
+				
+				frontendTrans.setParameter(key, viewParams.get(key));
+			}
+		}
+		
+		
 		//frontendTrans.setOutputProperty(OutputKeys.OMIT_XML_DECLARATION, "yes");
 				
 		Map<String,Object> params = new HashMap<String,Object>();
@@ -204,14 +227,18 @@ public class GameTransformer extends Transformer {
 				
 		switch(outputType_) {
 		case Data:
-			config.transformAsDatamodel(xmlSource, outputTarget, gameUser_.getHashedUserId());
+			//config.transformAsDatamodel(xmlSource, outputTarget, gameUser_.getHashedUserId());
+			config.transformAsDatamodel(new StreamSource(new ByteArrayInputStream(temp.toByteArray())), outputTarget, gameUser_.getHashedUserId());
 			break;
 		case Raw:
-			config.transformAsDatamodel(xmlSource, new DOMResult(doc), gameUser_.getHashedUserId());
+			//config.transformAsDatamodel(xmlSource, new DOMResult(doc), gameUser_.getHashedUserId());
+			config.transformAsDatamodel(new StreamSource(new ByteArrayInputStream(temp.toByteArray())), new DOMResult(doc), gameUser_.getHashedUserId());
 			frontendTrans.transform(new DOMSource(doc), outputTarget);
 			break;
 		case View:
-			config.transformAsDatamodel(xmlSource, new DOMResult(doc), gameUser_.getHashedUserId());
+		
+			//config.transformAsDatamodel(xmlSource, new DOMResult(doc), gameUser_.getHashedUserId());
+			config.transformAsDatamodel(new StreamSource(new ByteArrayInputStream(temp.toByteArray())), new DOMResult(doc), gameUser_.getHashedUserId());
 			frontendTrans.transform(new DOMSource(doc), res1);
 			log.info("content: " + bos.toString());
 			

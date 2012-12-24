@@ -40,9 +40,9 @@
 				</div>
 				
 				<xsl:apply-templates select="scxml:data/tic:board" />
-				
+			
 				<div>
-					<view:eventHandler event="game.update-meta" mode="replace" />
+					<xsl:apply-templates select="document($game-meta-uri)//game:players" />
 				</div>
 			</body>
 		</html>
@@ -56,26 +56,25 @@
 		</ul>
 	</xsl:template>
 	
-	<xsl:template match="game:player">
-		<xsl:if test="game:param[@name='player']/text() = $playerid">
-			<strong>
-				<xsl:choose>
-					<xsl:when test="game:param[@name='connected']/text() = 'true'">connected</xsl:when>
-					<xsl:otherwise>disconnected</xsl:otherwise>
-				</xsl:choose>
-			</strong>
-		</xsl:if>
+	<xsl:template match="//game:message[game:event = 'game.playerConnectionChange']">
+		<strong>
+			<xsl:choose>
+				<xsl:when test="game:param[@name='connected']/text() = 'true'">connected</xsl:when>
+				<xsl:otherwise>disconnected</xsl:otherwise>
+			</xsl:choose>
+		</strong>
 	</xsl:template>
 	
-	<xsl:template match="game:player">
+	<xsl:template match="//game:message[game:event = 'game.playerJoin']">
 		<li>
 			<span>
-				<view:eventHandler event="game.playerConnectionChange" mode="replace">
-					<view:param name="playerid" value="{game:gameUser/game:userid}" />
+				<view:eventHandler event="game.playerConnectionChange" mode="replace"  
+					condition="param['playerid'] == '{game:param[@name='playerid']}'">
 				</view:eventHandler>
 			</span>
-			<txsl:value-of select="decendent-or-self::game:gameUser/game:nickname" /> 
-			<txsl:value-of select="decendent-or-self::game:gameUser/game:userid" />
+			
+			<xsl:value-of select="descendant-or-self::game:gameUser/game:nickname" /> 
+			<xsl:value-of select="descendant-or-self::game:gameUser/game:userid" />
 		</li>
 	</xsl:template>
 	
