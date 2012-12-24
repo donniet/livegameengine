@@ -300,7 +300,14 @@ ViewConstructor.prototype.registerEventHandlers = function(arr) {
 		this.handlers_[h.event].push(h);
 	}
 }
-
+ViewConstructor.prototype.parseMessageResponse = function(parent, messageContent) {
+	if(messageContent.namespaceURI == this.gameViewNamespace) {
+		// handle these separately.
+	}
+	else {
+		if(messageContent.namespaceURI != "") {}
+	}
+}
 ViewConstructor.prototype.handleClientMessage = function(clientMessage) {
 	//console.log("handling client message: " + clientMessage);
 	
@@ -344,6 +351,7 @@ ViewConstructor.prototype.handleClientMessage = function(clientMessage) {
 				emptyNode(el);
 			}
 			
+			//TODO: replace this with actual parsing of the content.
 			var adopted = document.importNode(clientMessage.content);
 			
 			el.appendChild(adopted);
