@@ -6,7 +6,8 @@
 	xmlns="http://www.w3.org/1999/xhtml"
 	xmlns:xalan="http://xml.apache.org/xalan"
 	xmlns:java="http://xml.apache.org/xalan/java"
-	xmlns:html="http://www.w3.org/1999/xhtml">
+	xmlns:html="http://www.w3.org/1999/xhtml"
+	exclude-result-prefixes="xsl view game xalan java html">
 
 	<xsl:param name="eventEndpointUrl" />
 	<xsl:param name="eventEndpointMethod" select="'POST'" />
@@ -57,30 +58,38 @@
 			<xsl:apply-templates select="@*|*|text()" />	
 		</xsl:copy>
 	</xsl:template>
-		
+	
 	<xsl:template match="view:eventHandler" mode="content">
-		<xsl:attribute name="id"><xsl:value-of select="concat('content-',generate-id(.))" /></xsl:attribute>
+		<xsl:param name="element-id" />
+		
 		<script type="text/javascript">
+			console.log("registering handler: <xsl:value-of select="@event" />");
 			View.registerEventHandlers([
-				{	"id": "<xsl:value-of select="generate-id(.)" />",
+				{	"id": "<xsl:value-of select="$element-id" />",
 					"mode": "<xsl:value-of select="@mode" />",
 					"event": "<xsl:value-of select="@event" />",
 					"condition": "<xsl:value-of select="java:com.livegameengine.util.Util.escapeJS(@condition)" />",
 					"parameters": [<xsl:for-each select="view:param">
 						{ "name": "<xsl:value-of select="@name" />", "value": "<xsl:value-of select="@value" />" },</xsl:for-each>
 					],
-					"contentId": "<xsl:value-of select="concat('content-',generate-id(.))" />",
+					"contentId": "<xsl:value-of select="$element-id" />",
 				}	
 			]);
 		</script>
 	</xsl:template>
 	
+	<xsl:template match="view:event" mode="attr">
+		<xsl:param name="element-id" />
+		
+		<xsl:attribute name="on{@on}">View.trigger(this, '<xsl:value-of select="concat($element-id,'-',@on)" />')</xsl:attribute>
+	</xsl:template>
+	
 	<xsl:template match="view:event" mode="content">
-		<xsl:attribute name="on{@on}">View.trigger(this, '<xsl:value-of select="generate-id(.)" />')</xsl:attribute>
+		<xsl:param name="element-id" />
 		
 		<script type="text/javascript">
 			View.registerEvents([
-				{	"id": "<xsl:value-of select="generate-id(.)" />",
+				{	"id": "<xsl:value-of select="concat($element-id,'-',@on)" />",
 					"event": "<xsl:value-of select="@on" />",
 					"gameEvent": "<xsl:value-of select="@gameEvent" />", 
 					"parameters": [<xsl:for-each select="view:param">
@@ -96,8 +105,31 @@
 		<xsl:copy>
 			<xsl:apply-templates select="@*" />
 		
-			<xsl:apply-templates select="view:event" mode="content" />
-			<xsl:apply-templates select="view:eventHandler" mode="content" />
+			<xsl:variable name="element-id">
+				<xsl:choose>
+					<xsl:when test="count(@id) > 0">
+						<xsl:value-of select="@id" />
+					</xsl:when>
+					<xsl:otherwise>
+						<xsl:value-of select="generate-id(.)" />
+					</xsl:otherwise>
+				</xsl:choose>
+			</xsl:variable>
+			
+			<xsl:if test="count(view:eventHandler) > 0 and count(@id) = 0">
+				<xsl:attribute name="id"><xsl:value-of select="$element-id" /></xsl:attribute>
+			</xsl:if>
+		
+			<xsl:apply-templates select="view:event" mode="attr">
+				<xsl:with-param name="element-id" select="$element-id" />
+			</xsl:apply-templates>
+			
+			<xsl:apply-templates select="view:event" mode="content">
+				<xsl:with-param name="element-id" select="$element-id" />
+			</xsl:apply-templates>
+			<xsl:apply-templates select="view:eventHandler" mode="content">
+				<xsl:with-param name="element-id" select="$element-id" />
+			</xsl:apply-templates>
 			
 			<xsl:apply-templates select="*[namespace-uri() != 'http://www.livegameengine.com/schemas/view.xsd' or (local-name() != 'eventHandler' and local-name() != 'event')]|text()" />
 		</xsl:copy>

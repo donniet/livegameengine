@@ -34,5 +34,17 @@
 <h2>Games</h2>
 
 
+<footer>
+	<c:choose>
+		<c:when test="${authenticated}">
+			<a href="${logout_url}">logout</a>
+		</c:when>
+		<c:otherwise>
+			<a href="${login_url}">login</a>
+		</c:otherwise>
+	</c:choose>
+</footer>
+
+
 </body>
 </html>

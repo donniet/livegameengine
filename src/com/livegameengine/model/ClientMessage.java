@@ -18,6 +18,7 @@ import javax.jdo.annotations.NotPersistent;
 import javax.jdo.annotations.PersistenceCapable;
 import javax.jdo.annotations.Persistent;
 import javax.jdo.annotations.PrimaryKey;
+import javax.xml.bind.annotation.XmlList;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
 import javax.xml.transform.Transformer;
@@ -99,7 +100,14 @@ public class ClientMessage implements Scriptable, XmlSerializable {
 			String k = i.next();
 			
 			this.parameterNames.add(k);
-			this.parameterValues.add(params.get(k));
+			
+			Object val = params.get(k);
+			if(String.class.isAssignableFrom(val.getClass())) {
+				this.parameterValues.add((String)val);
+			}
+			else {
+				this.parameterValues.add(val.toString());				
+			}
 		}
 	}
 	

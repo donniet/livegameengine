@@ -20,7 +20,7 @@ import com.livegameengine.config.Config;
 
 public class CompleteGame extends Action implements ExternalContent {
 	private List externalNodes = null;
-	private String winnersExpr = null;
+	private String winner = null;
 	private String winnerExpr = null;
 
 	public CompleteGame() {
@@ -42,6 +42,9 @@ public class CompleteGame extends Action implements ExternalContent {
 			
 			params.put("winner", winner);
 		}
+		else if(this.winner != null) {
+			params.put("winner", this.winner);
+		}
 		
 		evtDispatcher.send(
 				"game.completeGame.send", 
@@ -60,6 +63,12 @@ public class CompleteGame extends Action implements ExternalContent {
 	}
 	public void setWinnerExpr(String val) {
 		winnerExpr = val;
+	}
+	public String getWinner() {
+		return winner;
+	}
+	public void setWinner(String winner) {
+		this.winner = winner;
 	}
 
 }

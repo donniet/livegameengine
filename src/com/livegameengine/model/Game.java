@@ -441,28 +441,20 @@ public class Game implements Scriptable, EventDispatcher, SCXMLListener, XmlSeri
 							p.setWinner(true);
 							
 							// we can only send strings to the client
-							params.put("winner", p.getGameUser().getHashedUserId());
-							
-							NodeList nl = null;
-							try {
-								nl = Config.getInstance().serializeToNodeList("player", p);
-							} catch (XMLStreamException e) {
-								// TODO Auto-generated catch block
-								e.printStackTrace();
-							}
-							
-							if(nl != null && nl.getLength() > 0) {
-								content = nl.item(0);
-							}
+							params.put("winner", p.getRole());
+							params.put("winning_player", p.getGameUser().getHashedUserId());
 						}
+						// could be a role, or a game user id...
 						else if(String.class.isAssignableFrom(o.getClass())) {
 							String playerid = (String)o;
 							boolean found = false;
 							for(Iterator<Player> i = getPlayers().iterator(); !found && i.hasNext();) {
 								Player p = i.next();
 								
-								if(playerid.equals(p.getGameUser().getHashedUserId())) {
+								if(playerid.equals(p.getGameUser().getHashedUserId()) || playerid.equals(p.getRole())) {
 									p.setWinner(true);
+									params.put("winner", p.getRole());
+									params.put("winning_player", p.getGameUser().getHashedUserId());
 									found = true;
 								}
 							}
@@ -480,6 +472,7 @@ public class Game implements Scriptable, EventDispatcher, SCXMLListener, XmlSeri
 					
 					if(!isError_) { 
 						setCompleted(new Date());
+						success = true;
 					}
 				}
 				else if(event.equals("game.error")) {

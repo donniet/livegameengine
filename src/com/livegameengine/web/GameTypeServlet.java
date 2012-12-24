@@ -37,8 +37,8 @@ public class GameTypeServlet extends HttpServlet {
 	
 	public void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
 		UserService userService = UserServiceFactory.getUserService();
-		
-		boolean authenticated = (req.getUserPrincipal() != null);
+
+		boolean authenticated = userService.isUserLoggedIn();
 		
 		Pattern p = Pattern.compile("/t/([^/]+)/");
 		
@@ -66,12 +66,11 @@ public class GameTypeServlet extends HttpServlet {
 		
 		UserService userService = UserServiceFactory.getUserService();
 		
-		boolean authenticated = (req.getUserPrincipal() != null);
+		boolean authenticated = userService.isUserLoggedIn();
 		
 		
 		if(!authenticated) {
-			resp.setStatus(403);
-			resp.getOutputStream().write("You are not signed in".getBytes());
+			resp.sendRedirect(userService.createLoginURL("/"));
 			return;
 		}		
 
@@ -90,7 +89,7 @@ public class GameTypeServlet extends HttpServlet {
 			t.setTypeName("Test");
 			t.setClientVersion("0.2");
 							
-			URL u = GameServlet.class.getResource("/tictac.xml");
+			URL u = GameServlet.class.getResource("/tictac5.xml");
 			URLConnection conn = u.openConnection();
 			
 			ByteArrayOutputStream bos = new ByteArrayOutputStream();

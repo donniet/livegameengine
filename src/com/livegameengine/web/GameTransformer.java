@@ -180,7 +180,7 @@ public class GameTransformer extends Transformer {
 		
 		ident.transform(xmlSource, new StreamResult(temp));
 		
-		log.info("source: " + temp.toString());
+		//log.info("source: " + temp.toString());
 		
 		Document doc = config.newXmlDocument();
 		
@@ -201,6 +201,7 @@ public class GameTransformer extends Transformer {
 		Transformer frontendTrans = config.newTransformer(frontEndSource);
 		frontendTrans.setOutputProperty(OutputKeys.METHOD, "xml");
 		frontendTrans.setOutputProperty(OutputKeys.MEDIA_TYPE, "application/xml");
+		frontendTrans.setURIResolver(new GameURIResolver(g));
 		
 		if(viewParams != null) {
 			for(Iterator<String> i = viewParams.keySet().iterator(); i.hasNext();) {
@@ -240,7 +241,7 @@ public class GameTransformer extends Transformer {
 			//config.transformAsDatamodel(xmlSource, new DOMResult(doc), gameUser_.getHashedUserId());
 			config.transformAsDatamodel(new StreamSource(new ByteArrayInputStream(temp.toByteArray())), new DOMResult(doc), gameUser_.getHashedUserId());
 			frontendTrans.transform(new DOMSource(doc), res1);
-			log.info("content: " + bos.toString());
+			//log.info("content: " + bos.toString());
 			
 			Document front = null;
 			DocumentBuilder db = config.getDocumentBuilder();
@@ -255,7 +256,7 @@ public class GameTransformer extends Transformer {
 			}
 						
 			if(front == null) {
-				log.info("front is null.");
+				//log.info("front is null.");
 				front = config.newXmlDocument();
 				
 				Node root = front.createElementNS(config.getGameEngineNamespace(), "value");

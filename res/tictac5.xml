@@ -167,10 +167,10 @@
 
 <state id="check_complete">
 	<transition cond="getWinner() != null" target="complete">
-		<script>//<![CDATA[
+		<script><![CDATA[
 			board.board.@winner = getWinner();
-		//]]></script>
-		<game:completeGame winnerExpr="game.findPlayerByRole(board.board.@winner)" />
+		]]></script>
+		<game:completeGame winnerExpr="board.board.@winner" />
 	</transition>
 	<transition cond="getWinner() == null" target="play" />
 </state>

@@ -8,7 +8,7 @@
 	xmlns:scxml="http://www.w3.org/2005/07/scxml"
 	xmlns:xalan="http://xml.apache.org/xalan"
 	xmlns:fn="http://www.w3.org/2005/xpath-functions"
-	exclude-result-prefixes="xsl xalan fn">
+	exclude-result-prefixes="xsl xalan fn scxml game">
 	
 	<xsl:param name="game-meta-uri" select="'game://current/meta'" />
 	
@@ -44,7 +44,7 @@
 				<ul>
 					<view:eventHandler event="game.playerJoin" mode="append" />
 			
-					<xsl:apply-templates select="document($game-meta-uri)//game:player" />
+					<xsl:apply-templates select="document($game-meta-uri)//game:players/game:player" />
 				</ul>
 			</body>
 		</html>
@@ -59,23 +59,41 @@
 		</strong>
 	</xsl:template>
 	
+	<xsl:template match="/game:message[game:event = 'board.placement']">
+		<xsl:for-each select="game:param[@name='role']">
+			<xsl:call-template name="placement" />
+		</xsl:for-each>
+	</xsl:template>
+	
+	<xsl:template match="/game:message[game:event = 'game.playerJoin']">
+		<xsl:apply-templates select="game:content/game:player" />
+	</xsl:template>
+	
+	<xsl:template match="/game:message[game:event = 'game.completeGame']">
+		WINNER!
+	</xsl:template>
+	
 	<xsl:template match="game:player">
 		<li>
 			<span>
 				<view:eventHandler event="game.playerConnectionChange" mode="replace"  
-					condition="param['playerid'] == '{descendant-or-self::game:gameUser/game:userid}'">
+					condition="params['playerid'] == '{descendant-or-self::game:gameUser/game:userid}'">
 				</view:eventHandler>
 			</span>
 			
-			<xsl:value-of select="descendant-or-self::game:gameUser/game:nickname" /> 
-			<xsl:value-of select="descendant-or-self::game:gameUser/game:userid" />
+			<span>
+				<view:eventHandler event="game.completeGame" mode="replace" 
+					condition="params['winner'] == '{descendant-or-self::game:role}'" />
+			</span>
+			
+			<xsl:value-of select="descendant-or-self::game:gameUser/game:nickname" /> |
+			<xsl:value-of select="descendant-or-self::game:gameUser/game:userid" /> |
+			<xsl:value-of select="descendant-or-self::game:role" />
 		</li>
 	</xsl:template>
 	
-	<xsl:template match="/game:message"><xsl:comment>Ignoring</xsl:comment></xsl:template>
-	
-	<xsl:template match="/game:message[game:event = 'game.playerJoin']">
-		<xsl:apply-templates select="game:content/game:player" />
+	<xsl:template match="/game:message" priority="-100">
+		<xsl:comment>Ignoring: <xsl:value-of select="game:event" /></xsl:comment>
 	</xsl:template>
 	
 	<xsl:template match="tic:board">
@@ -90,33 +108,30 @@
 		</tr>
 	</xsl:template>
 	
-	<xsl:template match="/game:message[name='board.placement']">
-		<xsl:if test="game:param[@name='x']=$x and game:param[@name='y']=$y">
-			<strong><xsl:value-of select="game:param[@name='role']" /></strong>
-		</xsl:if>
+	<xsl:template name="placement">
+		<strong><xsl:value-of select="." /></strong>
 	</xsl:template>
 	
 	<xsl:template match="tic:col">
 		<xsl:variable name="x"><xsl:value-of select="count(preceding-sibling::tic:col)" /></xsl:variable>
 		<xsl:variable name="y"><xsl:value-of select="count(../preceding-sibling::tic:row)" /></xsl:variable>
-		<td>
+		<td id="x{$x}y{$y}">
 			<xsl:if test="@highlight = 'true'">
 				<xsl:attribute name="class">highlight</xsl:attribute>
 			</xsl:if>
 			<xsl:choose>
 				<xsl:when test="count(tic:mark) > 0">
-					<xsl:value-of select="tic:mark/@player" />
+					<xsl:for-each select="tic:mark/@player">
+						<xsl:call-template name="placement" />
+					</xsl:for-each>
 				</xsl:when>
 				<xsl:otherwise>
 					<view:event on="click" endpointEvent="click">
 						<tic:square x="{$x}" y="{$y}" />
 					</view:event>
-					<span>
-						<view:eventHandler event="board.placement" mode="replace">
-							<view:param name="x" value="{$x}" />
-							<view:param name="y" value="{$y}" />
-						</view:eventHandler>
-					</span>
+					<view:eventHandler event="board.placement" mode="replace"
+						condition="parseInt(params['x']) == {$x} &amp;&amp; parseInt(params['y']) == {$y}">
+					</view:eventHandler>
 				</xsl:otherwise>
 			</xsl:choose>
 		</td>

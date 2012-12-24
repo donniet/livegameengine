@@ -29,7 +29,7 @@ public class HomeServlet extends HttpServlet {
 		
 		String thisURL = req.getRequestURI();
 		
-		boolean authenticated = (req.getUserPrincipal() != null);
+		boolean authenticated = userService.isUserLoggedIn();
 		
 		
 		PersistenceManager pm = PMF.getInstance().getPersistenceManager();
@@ -39,6 +39,9 @@ public class HomeServlet extends HttpServlet {
 		List<GameType> types = (List<GameType>)q.execute();
 				
 		req.setAttribute("types", types);
+		req.setAttribute("authenticated", authenticated);
+		req.setAttribute("login_url", userService.createLoginURL(thisURL));
+		req.setAttribute("logout_url", userService.createLogoutURL(thisURL));
 		
 		RequestDispatcher dispatcher = req.getRequestDispatcher("/WEB-INF/home.jsp");
 		try {
