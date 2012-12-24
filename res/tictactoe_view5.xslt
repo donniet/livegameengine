@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <xsl:stylesheet version="2.0" 
 	xmlns:xsl="http://www.w3.org/1999/XSL/Transform" 
-	xmlns:txsl="http://www.w3.org/1999/XSL/Transform#Client"
 	xmlns="http://www.w3.org/1999/xhtml" 
 	xmlns:tic="http://www.livegameengine.com/schemas/games/tictactoe.xsd"
 	xmlns:view="http://www.livegameengine.com/schemas/view.xsd"
 	xmlns:game="http://www.livegameengine.com/schemas/game.xsd"
 	xmlns:scxml="http://www.w3.org/2005/07/scxml"
 	xmlns:xalan="http://xml.apache.org/xalan"
-	xmlns:fn="http://www.w3.org/2005/xpath-functions">
+	xmlns:fn="http://www.w3.org/2005/xpath-functions"
+	exclude-result-prefixes="xsl xalan fn">
 	
 	<xsl:param name="game-meta-uri" select="'game://current/meta'" />
 	
@@ -41,22 +41,16 @@
 				
 				<xsl:apply-templates select="scxml:data/tic:board" />
 			
-				<div>
-					<xsl:apply-templates select="document($game-meta-uri)//game:players" />
-				</div>
+				<ul>
+					<view:eventHandler event="game.playerJoin" mode="append" />
+			
+					<xsl:apply-templates select="document($game-meta-uri)//game:player" />
+				</ul>
 			</body>
 		</html>
 	</xsl:template>
 	
-	<xsl:template match="game:players">
-		<ul>
-			<view:eventHandler event="game.playerJoin" mode="append" />
-			
-			<xsl:apply-templates select="game:player" />
-		</ul>
-	</xsl:template>
-	
-	<xsl:template match="//game:message[game:event = 'game.playerConnectionChange']">
+	<xsl:template match="/game:message[game:event = 'game.playerConnectionChange']">
 		<strong>
 			<xsl:choose>
 				<xsl:when test="game:param[@name='connected']/text() = 'true'">connected</xsl:when>
@@ -65,17 +59,23 @@
 		</strong>
 	</xsl:template>
 	
-	<xsl:template match="//game:message[game:event = 'game.playerJoin']">
+	<xsl:template match="game:player">
 		<li>
 			<span>
 				<view:eventHandler event="game.playerConnectionChange" mode="replace"  
-					condition="param['playerid'] == '{game:param[@name='playerid']}'">
+					condition="param['playerid'] == '{descendant-or-self::game:gameUser/game:userid}'">
 				</view:eventHandler>
 			</span>
 			
 			<xsl:value-of select="descendant-or-self::game:gameUser/game:nickname" /> 
 			<xsl:value-of select="descendant-or-self::game:gameUser/game:userid" />
 		</li>
+	</xsl:template>
+	
+	<xsl:template match="/game:message"><xsl:comment>Ignoring</xsl:comment></xsl:template>
+	
+	<xsl:template match="/game:message[game:event = 'game.playerJoin']">
+		<xsl:apply-templates select="game:content/game:player" />
 	</xsl:template>
 	
 	<xsl:template match="tic:board">
@@ -90,7 +90,7 @@
 		</tr>
 	</xsl:template>
 	
-	<xsl:template match="/game:event[name='board.placement']">
+	<xsl:template match="/game:message[name='board.placement']">
 		<xsl:if test="game:param[@name='x']=$x and game:param[@name='y']=$y">
 			<strong><xsl:value-of select="game:param[@name='role']" /></strong>
 		</xsl:if>
