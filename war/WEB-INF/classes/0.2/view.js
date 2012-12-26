@@ -270,9 +270,13 @@ function ViewConstructor() {
 	this.handlers_ = new Object();
 	this.eventEndpoint_ = null;
 	this.gameEventEndpoint_ = null;
+	this.gameViewNamespace_ = ""
 	
 	var self = this;
 	window.onload = function() { self.handleLoad(); }
+}
+ViewConstructor.prototype.setGameViewNamespace = function(ns) {
+	this.gameViewNamespace_ = ns;
 }
 ViewConstructor.prototype.setEventEndpoint = function(obj) {
 	this.eventEndpoint_ = obj;
@@ -300,12 +304,116 @@ ViewConstructor.prototype.registerEventHandlers = function(arr) {
 		this.handlers_[h.event].push(h);
 	}
 }
+ViewConstructor.prototype.handleGameViewElement = function(parent, node) {
+	switch(node.localName) {
+	case "event":
+		this.handleGameViewEventElement(parent, node);
+		break;
+	case "eventHandler":
+		this.handleGameViewEventHandlerElement(parent, node);
+		break;
+	}
+}
+ViewConstructor.prototype.handleGameViewEventElement = function(parent, node) {
+	var params = new Array();
+	var content = "";
+	
+	var ser = new XMLSerializer();
+	
+	for(var i = 0; i < node.childNodes.length; i++) {
+		var n = node.childNodes[i];
+		
+		if(n.localName == "param" && n.namespaceURI == this.gameViewNamespace_) {
+			params.push({ "name": n.getAttribute("name"), "value": n.getAttribute("value")});
+		}
+		else {
+			content += ser.serializeToString(n);
+		}
+	}
+	
+	var event = node.getAttribute("on");
+	
+	console.log("event: " + event + ", content: " + content);
+	
+	var e = {
+		"event": event,
+		"gameEvent": node.attributes["gameEvent"] ? node.attributes["gameEvent"].nodeValue : "",
+		"payload": content,
+		"params": params
+	};
+
+	Event.addListener(parent, event, function() {
+		this.trigger(parent, e);
+	}, this);
+}
+ViewConstructor.prototype.handleGameViewEventHandlerElement = function(parent, node) {
+	var h = {
+		"mode": node.attributes["mode"] ? node.attributes["mode"].nodeValue : "",
+		"event": node.attributes["event"] ? node.attributes["event"].nodeValue : "",
+		"condition": node.attributes["condition"] ? node.attributes["condition"].nodeValue : "",
+		"content": parent
+	};
+	
+	this.registerEventHandlers([h]);
+}
+ViewConstructor.prototype.parseDocumentBody = function(node) {
+	if(!node) return;
+	
+	if(node.namespaceURI == this.gameViewNamespace_) {
+		this.handleGameViewElement(node.parentNode, node);
+		node.parentNode.removeChild(node);
+	}
+	
+	for(var i = 0; i < node.childNodes.length; i++) {
+		this.parseDocumentBody(node.childNodes[i]);
+	}
+}
 ViewConstructor.prototype.parseMessageResponse = function(parent, messageContent) {
-	if(messageContent.namespaceURI == this.gameViewNamespace) {
+	if(messageContent.namespaceURI == this.gameViewNamespace_) {
 		// handle these separately.
+		this.handleGameViewElement(parent, messageContent);
 	}
 	else {
-		if(messageContent.namespaceURI != "") {}
+		var imported = null;
+		
+		switch(messageContent.nodeType) {
+		case Node.ELEMENT_NODE:
+			if(!messageContent.namespaceURI || messageContent.namespaceURI == "") {
+				imported = document.createElement(messageContent.localName);
+			}
+			else {
+				imported = document.createElementNS(messageContent.namespaceURI, messageContent.localName);
+			}
+			
+			for(var i = 0; i < messageContent.attributes.length; i++) {
+				var a = messageContent.attributes[i];
+				
+				var attr = null;
+				console.log("attribute namespace: '" + a.namespaceURI + "'");
+				
+				imported.setAttribute(a.nodeName, a.nodeValue);	
+			}
+			break;
+		case Node.TEXT_NODE:
+			imported = document.createTextNode(messageContent.nodeValue);
+			break;
+		case Node.DOCUMENT_NODE:
+			imported = null;
+			break;
+		}
+		
+		if(imported != null) {
+			parent.appendChild(imported);
+		}
+		else {
+			imported = parent;
+		}
+		
+		for(var i = 0; i < messageContent.childNodes.length; i++) {
+			var n = messageContent.childNodes[i];
+			
+			this.parseMessageResponse(imported, n);
+		}	
 	}
 }
 ViewConstructor.prototype.handleClientMessage = function(clientMessage) {
@@ -317,11 +425,12 @@ ViewConstructor.prototype.handleClientMessage = function(clientMessage) {
 	
 	var handlers = this.handlers_[clientMessage.event];
 	
-	console.log("handler: " + handlers);
+	console.log("handler: " + handlers.toString());
 	
 	if(handlers && handlers.length > 0) {
 		for(var i = 0; i < handlers.length; i++) {
 			var h = handlers[i];
+			console.log("checking handler number: " + i + ": " + h.condition);
 			
 			if(h.condition != "") {
 				console.log("condition: " + h.condition);
@@ -343,18 +452,19 @@ ViewConstructor.prototype.handleClientMessage = function(clientMessage) {
 			
 			//console.log("found a handler: " + h);
 			
-			var el = document.getElementById(h.contentId);
-			
-			if(!el) continue;
+			if(!h.content) continue;
 			
 			if(h.mode == "replace") {
-				emptyNode(el);
+				emptyNode(h.content);
 			}
 			
+			this.parseMessageResponse(h.content, clientMessage.content);
+			/*
 			//TODO: replace this with actual parsing of the content.
 			var adopted = document.importNode(clientMessage.content);
 			
 			el.appendChild(adopted);
+			*/
 		}
 	}
 }
@@ -367,9 +477,7 @@ ViewConstructor.prototype.handleEventError = function(el, event, responseXML) {
 	//console.log("event error: " + responseXML ? responseXML.toString() : "null");
 }
 
-ViewConstructor.prototype.trigger = function(el, eventid) {
-	var e = this.events_[eventid];
-	
+ViewConstructor.prototype.trigger = function(el, e) {
 	if(typeof e == "undefined") {
 		//console.log("unknown event id: '" + eventid + "'");
 		return;
@@ -412,6 +520,8 @@ ViewConstructor.prototype.setServerLoadTime = function(d) {
 }
 ViewConstructor.prototype.handleLoad = function() {
 	var self = this;
+	
+	this.parseDocumentBody(document.body);
 	
 	//console.log("View loading...");
 	if(this.clientMessageChannelUrl_ != null) {

@@ -12,12 +12,6 @@
 	
 	<xsl:param name="game-meta-uri" select="'game://current/meta'" />
 	
-	
-	<xsl:param name="connected" />
-	<xsl:param name="playerid" />
-	<xsl:param name="x" />
-	<xsl:param name="y" />
-	
 	<xsl:variable name="game-meta-doc" select="document($game-meta-uri)" />
 	
 	<xsl:template match="/scxml:datamodel">
@@ -70,7 +64,7 @@
 	</xsl:template>
 	
 	<xsl:template match="/game:message[game:event = 'game.completeGame']">
-		WINNER!
+		<span>WINNER!</span>
 	</xsl:template>
 	
 	<xsl:template match="game:player">
