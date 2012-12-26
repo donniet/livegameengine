@@ -243,7 +243,12 @@ ClientMessageChannel.prototype.onclientmessages = function(messagesXml) {
 			if(latestNode) {
 				var d = dateFromString(latestNode.nodeValue);
 				
-				this.since = new Date(d.getTime() + this.messageDelta);
+				if(d < this.since) {
+					console.log("something strange, latestDate < since");
+				}
+				else {
+					this.since = new Date(d.getTime() + this.messageDelta);
+				}
 				
 				//console.log("this.since == " + stringFromDate(this.since));
 			}
@@ -459,12 +464,6 @@ ViewConstructor.prototype.handleClientMessage = function(clientMessage) {
 			}
 			
 			this.parseMessageResponse(h.content, clientMessage.content);
-			/*
-			//TODO: replace this with actual parsing of the content.
-			var adopted = document.importNode(clientMessage.content);
-			
-			el.appendChild(adopted);
-			*/
 		}
 	}
 }
