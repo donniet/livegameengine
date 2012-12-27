@@ -27,7 +27,7 @@
 			}
 		]]></script>
 		<data name="state">
-			<template xmlns="http://www.pilgrimsofnatac.com/schemas/game.xsd">
+			<template xmlns="http://www.livegameengine.com/schemas/pilgrims.xsd">
 				<playerTemplate colors="red green blue orange">
 					<development type="settlement" count="5" />
 					<development type="city" count="4" />
@@ -79,7 +79,7 @@
 				</ports>
 				
 			</template>
-			<board xmlns="http://www.pilgrimsofnatac.com/schemas/game.xsd">
+			<board xmlns="http://www.livegameengine.com/schemas/pilgrims.xsd">
 				<maxPlayers>4</maxPlayers>
 				<minPlayers>2</minPlayers>
 				<polys/>
@@ -115,7 +115,7 @@
 	</state>
 
 	<state id="waitingForPlayers">
-		<transition event="game.playerJoin" cond="state.board.players.player.length() + 1 > parseInt(state.board.maxPlayers)">
+		<transition event="game.playerJoin" cond="state.board.players.player.length() + 1 &gt; parseInt(state.board.maxPlayers)">
 			<game:error messageExpr="'You cannot excede the maximum of ' + parseInt(state.board.maxPlayers) + ' players.'" />
 		</transition>
 		<transition event="game.playerJoin">
@@ -125,10 +125,17 @@
 			<game:playerJoin roleExpr="role" />
 		</transition>
 	
-		<transition event="game.startGame" cond="state.board.players.player.length() < parseInt(state.board.minPlayers)">
+		<transition event="game.startGame" cond="state.board.players.player.length() &lt; parseInt(state.board.minPlayers)">
 			<game:error messageExpr="'You cannot start until you have ' + parseInt(state.board.minPlayers) + ' players.'" />
 		</transition>
 		<transition event="game.startGame" target="createBoard" />
-		
+	</state>
+	
+	<state id="createBoard">
+		<onentry>
+			<script><![CDATA[
+			
+			]]></script>
+		</onentry>
 	</state>	
 </scxml>
