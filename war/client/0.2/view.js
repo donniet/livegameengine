@@ -28,6 +28,9 @@ function replacePattern(pattern, dict) {
 }
 replacePattern.TemplatingRegex = new RegExp("\{([^\}]+)\}", "g");
 
+
+//has trouble parsing this date: 	2012-12-27T02:09:29.046GMT
+// parses it as: 					2012-12-27T02:00:29.046GMT
 var iso8601datepattern = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(\.\d+)((([-+])(\d{2}):(\d{2}))|UTC|GMT|Z)$/;
 
 function dateFromString(s) {
@@ -39,6 +42,8 @@ function dateFromString(s) {
 		var millis = Math.floor(1000.0 * parseFloat(m[7]));
 		
 		//console.log("millis calc: " + millis);
+		
+		console.log("parsed: " + m[1] + "-" + (parseInt(m[2]) - 1) + "-" + m[3] + "T" + m[4] + ":" + m[5] + ":" + m[6] + "." + millis);
 		
 		var d = Date.UTC(
 			parseInt(m[1]), parseInt(m[2])-1, parseInt(m[3]),
@@ -135,6 +140,13 @@ function ClientMessage(n) {
 	this.content = null;
 			
 	this.parse(n);
+}
+ClientMessage.prototype.select = function(string) {
+	if(!this.content) return null;
+	
+	var doc = this.content.ownerDocument;
+	
+	return doc.evaluate(string, this.content, View.getNamespaceResolver(), XPathResult.ANY_TYPE, null);
 }
 ClientMessage.prototype.parse = function(node) {
 	if(!node) return;
@@ -243,7 +255,12 @@ ClientMessageChannel.prototype.onclientmessages = function(messagesXml) {
 			if(latestNode) {
 				var d = dateFromString(latestNode.nodeValue);
 				
-				this.since = new Date(d.getTime() + this.messageDelta);
+				if(d < this.since) {
+					console.log("something strange, latestDate < since");
+				}
+				else {
+					this.since = new Date(d.getTime() + this.messageDelta);
+				}
 				
 				//console.log("this.since == " + stringFromDate(this.since));
 			}
@@ -262,6 +279,65 @@ ClientMessageChannel.prototype.onerror = function(errorXml) {
 	this.close();
 }
 
+function GameError(node) {
+	this.message = "";
+	
+	if(node) this.parse(node);
+}
+GameError.prototype.parse = function(node) {
+	if(!node) return;
+	
+	forChildNodes(node, {
+		"error": function(errorNode) {
+			this.message = nodeText(errorNode);
+		}
+	}, this);
+}
+
+function ErrorDisplay(node) {
+	this.element = null;
+	this.timeout = 5000;
+	
+	this.timeoutHandle_ = null;
+	
+	this.parse(node);
+}
+ErrorDisplay.prototype.parse = function(node) {
+	if(!node) return;
+	
+	this.element = node.parentNode;
+	
+	var timeoutAttr = node.attributes["timeout"];
+	var timeoutValue = this.timeout;
+	if(timeoutAttr) {
+		timeoutValue = parseInt(timeoutAttr.nodeValue);
+		if(timeoutValue != Number.NaN) {
+			this.timeout = timeoutValue;
+		}
+	}
+}
+ErrorDisplay.prototype.clearError = function() {
+	emptyNode(this.element);
+}
+ErrorDisplay.prototype.displayError = function(gameError) {
+	if(this.timeoutHandle_ != null) {
+		clearTimeout(this.timeoutHandle_);
+		this.timeoutHandle_ = null;
+	}
+	
+	this.clearError();
+	
+	this.element.appendChild(document.createTextNode(gameError.message));
+	
+	if(this.timeout > 0) {
+		var self = this;
+		this.timeoutHandle_ = setTimeout(function() {
+			self.clearError();
+			self.timeoutHandle_ = null;
+		}, this.timeout);
+	}
+}
+
 function ViewConstructor() {	
 	this.channel = null;
 	this.clientMessageChannelUrl_ = null;
@@ -270,13 +346,35 @@ function ViewConstructor() {
 	this.handlers_ = new Object();
 	this.eventEndpoint_ = null;
 	this.gameEventEndpoint_ = null;
-	this.gameViewNamespace_ = ""
+	this.gameViewNamespace_ = "";
+	this.gameNamespace_ = "";
+	
+	this.namespacesByPrefix_ = new Object();
+	
+	this.errorDisplay_ = null;
 	
 	var self = this;
 	window.onload = function() { self.handleLoad(); }
 }
+ViewConstructor.prototype.getNamespaceResolver = function() {
+	var self = this;
+	
+	return function(prefix) {
+		switch(prefix) {
+		case "game": return self.gameNamespace_;
+		case "view": return self.gameViewNamespace_;
+		default: return self.namespacesByPrefix_[prefix] || null;
+		}
+	}
+}
+ViewConstructor.prototype.registerNamespacePrefix = function(prefix, namespaceUri) {
+	this.namespacesByPrefix_[prefix] = namespaceUri;
+}
 ViewConstructor.prototype.setGameViewNamespace = function(ns) {
 	this.gameViewNamespace_ = ns;
+}
+ViewConstructor.prototype.setGameNamespace = function(ns) {
+	this.gameNamespace_ = ns;
 }
 ViewConstructor.prototype.setEventEndpoint = function(obj) {
 	this.eventEndpoint_ = obj;
@@ -311,6 +409,18 @@ ViewConstructor.prototype.handleGameViewElement = function(parent, node) {
 		break;
 	case "eventHandler":
 		this.handleGameViewEventHandlerElement(parent, node);
+		break;
+	case "errorDisplay":
+		this.errorDisplay_ = new ErrorDisplay(node);
+		break;
+	case "clientNamespace":
+		var prefix = "";
+		var namespaceUri = "";
+		
+		if(node.getAttribute("prefix")) prefix = node.getAttribute("prefix");
+		if(node.getAttribute("namespace-uri")) namespaceUri = node.getAttribute("namespace-uri");
+		
+		this.registerNamespacePrefix(prefix, namespaceUri);
 		break;
 	}
 }
@@ -351,8 +461,18 @@ ViewConstructor.prototype.handleGameViewEventHandlerElement = function(parent, n
 		"mode": node.attributes["mode"] ? node.attributes["mode"].nodeValue : "",
 		"event": node.attributes["event"] ? node.attributes["event"].nodeValue : "",
 		"condition": node.attributes["condition"] ? node.attributes["condition"].nodeValue : "",
-		"content": parent
+		"content": parent,
+		"attributes": new Array()
 	};
+	
+	forChildNodes(node, {
+		"attribute": function(attributeNode) {
+			h.attributes.push({
+				name: attributeNode.getAttribute("name"),
+				value: nodeText(attributeNode)
+			});
+		}
+	}, this);
 	
 	this.registerEventHandlers([h]);
 }
@@ -396,6 +516,13 @@ ViewConstructor.prototype.parseMessageResponse = function(parent, messageContent
 			break;
 		case Node.TEXT_NODE:
 			imported = document.createTextNode(messageContent.nodeValue);
+			break;
+		case Node.DATA_SECTION_NODE:
+			imported = document.createCDATASection(messageContent.nodeValue);
+			break;
+		case Node.ENTITY_REFERENCE_NODE:
+		case Node.ENTITY_NODE:
+			// i don't think these are used anymore
 			break;
 		case Node.DOCUMENT_NODE:
 			imported = null;
@@ -445,7 +572,29 @@ ViewConstructor.prototype.handleClientMessage = function(clientMessage) {
 					}
 				}
 				
-				if(!r) {
+				if(typeof r == "undefined" || r == null) {
+					continue;
+				}
+				else if(r instanceof XPathResult) {
+					console.log("xpath result: " + r.resultType + ", " + r.booleanValue);
+					
+					
+					if(r.resultType == XPathResult.BOOLEAN_TYPE) {
+						if(!r.booleanValue) continue;
+					}
+					else if(r.resultType == XPathResult.NUMBER_TYPE) {
+						if(r.numberValue == 0) continue;
+					}
+					else if(r.resultType == XPathResult.STRING_TYPE) {
+						if(r.stringValue == null || r.stringValue == "") continue;
+					}
+					else {
+						//TODO: handle the node set types
+						console.log("resultType: " + r.resultType);
+						if(!r) continue;
+					}
+				}
+				else if(!r) {
 					continue;
 				}
 			}
@@ -454,20 +603,22 @@ ViewConstructor.prototype.handleClientMessage = function(clientMessage) {
 			
 			if(!h.content) continue;
 			
-			if(h.mode == "replace") {
-				emptyNode(h.content);
+			if(h.mode == "attribute") {
+				for(var j = 0; j < h.attributes.length; j++) {
+					var a = h.attributes[j];
+					h.content.setAttribute(a.name, a.value);
+				}
 			}
-			
-			this.parseMessageResponse(h.content, clientMessage.content);
-			/*
-			//TODO: replace this with actual parsing of the content.
-			var adopted = document.importNode(clientMessage.content);
-			
-			el.appendChild(adopted);
-			*/
+			else {
+				if(h.mode == "replace") {
+					emptyNode(h.content);
+				}			
+				this.parseMessageResponse(h.content, clientMessage.content);
+			}
 		}
 	}
 }
+
 
 ViewConstructor.prototype.handleEventSuccess = function(el, event, responseXML) {
 	//console.log("event success: " + (responseXML ? responseXML.toString() : "null"));
@@ -475,6 +626,14 @@ ViewConstructor.prototype.handleEventSuccess = function(el, event, responseXML) 
 }
 ViewConstructor.prototype.handleEventError = function(el, event, responseXML) {
 	//console.log("event error: " + responseXML ? responseXML.toString() : "null");
+	var error = new GameError(responseXML);
+	
+	if(!this.errorDisplay_) {
+		alert(error.message);
+	}
+	else {
+		this.errorDisplay_.displayError(error);
+	}
 }
 
 ViewConstructor.prototype.trigger = function(el, e) {

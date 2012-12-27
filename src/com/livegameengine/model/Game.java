@@ -207,7 +207,7 @@ public class Game implements Scriptable, EventDispatcher, SCXMLListener, XmlSeri
 	private void init() throws GameLoadException {
 		//GameType gt = getGameType();
 		//InputStream bis = new ByteArrayInputStream(gt.getStateChart());
-		InputStream bis = Game.class.getResourceAsStream("/tictac3.xml");
+		InputStream bis = Game.class.getResourceAsStream("/tictac5.xml");
 		
 		loadWarnings = new ArrayList<Exception>();
 		
@@ -385,9 +385,7 @@ public class Game implements Scriptable, EventDispatcher, SCXMLListener, XmlSeri
 			Object content, List externalNodes) {
 		
 		getLog().info(String.format("Send Event '%s'", event));
-		
-		boolean success = false;
-		
+				
 		if(	targetType.equals(Config.getInstance().getGameEventTargetType())) {
 			if(target.equals(Config.getInstance().getGameEventTarget())) {
 				if(event.equals("game.playerJoin")) {
@@ -422,8 +420,6 @@ public class Game implements Scriptable, EventDispatcher, SCXMLListener, XmlSeri
 						if(nl != null && nl.getLength() > 0) {
 							content = nl.item(0);
 						}
-						
-						success = true;
 						isError_ = false;
 					}
 					else {
@@ -472,7 +468,6 @@ public class Game implements Scriptable, EventDispatcher, SCXMLListener, XmlSeri
 					
 					if(!isError_) { 
 						setCompleted(new Date());
-						success = true;
 					}
 				}
 				else if(event.equals("game.error")) {
@@ -487,19 +482,18 @@ public class Game implements Scriptable, EventDispatcher, SCXMLListener, XmlSeri
 					isImportant_ = Boolean.parseBoolean(params.get("important").toString());
 				}
 				else {
-					success = false;
-					isError_ = false;
+					isError_ = true;
+					errorMessage_ = String.format("unknown game event: '%s'", event);
 				}
 			}
 			else if(target.equals(Config.getInstance().getWatcherEventTarget())) {
 				event = String.format("board.%s", event);
 				
-				success = true;
 				isError_ = false;
 			}
 		}
 		
-		if(success) {
+		if(!isError_) {
 			//persistGameState();
 			ClientMessage m = null;
 			
@@ -556,7 +550,6 @@ public class Game implements Scriptable, EventDispatcher, SCXMLListener, XmlSeri
 		}
 		else {
 			isDirty_ = false;
-			isError_ = false;
 			return false;
 		}
 	}
@@ -590,20 +583,20 @@ public class Game implements Scriptable, EventDispatcher, SCXMLListener, XmlSeri
 		
 		if(isDirty_ && !isError_) {
 			persistGameState(true);
+			return true;
 		}
 		else {
 			isDirty_ = false;
-			isError_ = false;
+			return false;
 		}
-		
-		return true;
 	}
 	
-	public boolean getIsError() {
+	public boolean isError() {
 		return isError_;
 	}
 	public String getErrorMessage() {
-		return errorMessage_;
+		if(errorMessage_ == null) return "";
+		else return errorMessage_;
 	}
 		
 	public void sendWatcherMessage(String event, Map params, Object content) {
@@ -803,9 +796,6 @@ public class Game implements Scriptable, EventDispatcher, SCXMLListener, XmlSeri
 			errorMessage_ = String.format("Event '%s' was not valid in the current state of the game.", eventid);
 		}
 		
-		isDirty_ = false;
-		isError_ = false;
-		
 		return ret;
 	}
 	public List<Watcher> getWatchers() {
@@ -999,7 +989,7 @@ public class Game implements Scriptable, EventDispatcher, SCXMLListener, XmlSeri
         else if(name.equals("gameType"))
         	return this.getGameType();
         else if(name.equals("isError"))
-        	return this.getIsError();
+        	return this.isError();
         else if(name.equals("key"))
         	return KeyFactory.keyToString(this.getKey());
         else if(name.equals("owner"))
@@ -1087,6 +1077,15 @@ public class Game implements Scriptable, EventDispatcher, SCXMLListener, XmlSeri
 	@Override
 	public void setPrototype(Scriptable arg0) {
 		prototype_ = arg0;
+	}
+
+	public void clearError() {
+		this.isError_ = false;
+		this.errorMessage_ = "";
+	}
+
+	public boolean isDirty() {
+		return this.isDirty_;
 	}
 
 }

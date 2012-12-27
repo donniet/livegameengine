@@ -54,6 +54,7 @@
 				View.setEventEndpoint({ "url": "<xsl:value-of select="$eventEndpointUrl" />", "method":"<xsl:value-of select="$eventEndpointMethod" />" });
 				View.setGameEventEndpoint({ "url": "<xsl:value-of select="$gameEventEndpointUrl" />", "method":"<xsl:value-of select="$gameEventEndpointMethod" />" });
 				View.setGameViewNamespace("http://www.livegameengine.com/schemas/view.xsd");
+				View.setGameNamespace("http://www.livegameengine.com/schemas/game.xsd");
 			</script>
 			
 			<xsl:apply-templates select="@*|*|text()" />	

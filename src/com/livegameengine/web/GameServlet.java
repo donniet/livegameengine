@@ -85,7 +85,7 @@ public class GameServlet extends HttpServlet {
 		
 		final Matcher m = p.matcher(req.getPathInfo());
 		
-		log.info("path info: " + req.getPathInfo());
+		//log.info("path info: " + req.getPathInfo());
 		
 		if(m != null && m.matches()) {
 			Game g;
@@ -202,42 +202,6 @@ public class GameServlet extends HttpServlet {
 				else {
 					resp.setStatus(405);
 				}
-			}else if(m.group(2).equals("start")) {
-				if(req.getMethod().equals("POST")) {
-					if(u == null) {
-						resp.setStatus(403);
-						return;
-					}
-					
-					boolean success = g.sendStartGameRequest(u); 
-
-					if(!success) {
-						resp.setStatus(400);
-					}
-					else {
-						resp.setStatus(200);
-					}
-				}
-				else resp.setStatus(405);
-				
-			}
-			else if(m.group(2).equals("join")) {
-				if(req.getMethod().equals("POST")) {
-					if(u == null) {
-						resp.setStatus(403);
-						return;
-					}
-					
-					boolean success = g.sendPlayerJoinRequest(gu); 
-
-					if(!success) {
-						resp.setStatus(400);
-					}
-					else {							
-						resp.setStatus(200);
-					}
-				}
-				else resp.setStatus(405);
 			}
 			else if(m.group(2).equals("addListeners")) {
 				/*
@@ -306,13 +270,27 @@ public class GameServlet extends HttpServlet {
 				}
 				
 			}
-			else if(m.group(2).startsWith("event")) {
-				if(req.getMethod() == "POST") {
-					if(u == null) {
-						resp.setStatus(403);
-						return;
-					}
-					
+			else if(m.group(2).equals("start") || m.group(2).equals("join") || m.group(2).startsWith("event/")) {
+				if(!req.getMethod().equals("POST")) {
+					resp.setStatus(405);
+					resp.addHeader("Allow", "POST");
+					return;
+				}
+				
+				if(u == null) {
+					resp.setStatus(403);
+					return;
+				}
+				
+				boolean success = true;
+				
+				if(m.group(2).equals("start")) {
+					success = g.sendStartGameRequest(u);
+				}
+				else if(m.group(2).equals("join")) {
+					success = g.sendPlayerJoinRequest(u);
+				}
+				else if(m.group(2).startsWith("event/")) {
 					String eventName = "board." + m.group(4);
 					
 					Node data = doc.createElementNS(config.getGameEngineNamespace(), "data");
@@ -335,35 +313,42 @@ public class GameServlet extends HttpServlet {
 						}
 					}
 					
-					boolean ret = g.triggerEvent(eventName, data);
+					success = g.triggerEvent(eventName, data);
+				}
 					
-					if(!ret) {
-						String errorMessage = g.getErrorMessage();
-						
-						Node error = doc1.createElementNS(config.getGameEngineNamespace(), "error");
-						error.appendChild(doc1.createTextNode(errorMessage));
-						doc1.appendChild(error);
-												
-						resp.setContentType("application/xml");
-						resp.setStatus(400);
-						Transformer trans;
-						try {
-							trans = config.newTransformer();
-							trans.transform(new DOMSource(doc1), responseResult);
-						} catch (TransformerConfigurationException e) {
-							resp.setStatus(500);
-							e.printStackTrace();
-						} catch (TransformerException e) {
-							resp.setStatus(500);
-							e.printStackTrace();
-						}
+				if(!success) {
+					String errorMessage = "";
+					if(!g.isError()) {
+						// there was no official error, the event is simply not valid
+						errorMessage = "Action not valid in the current game state";
 					}
 					else {
-						resp.setStatus(200);
+						errorMessage = g.getErrorMessage();
 					}
+					
+					Node error = doc1.createElementNS(config.getGameEngineNamespace(), "error");
+					error.appendChild(doc1.createTextNode(errorMessage));
+					doc1.appendChild(error);
+											
+					resp.setContentType("application/xml");
+					resp.setStatus(400);
+					Transformer trans;
+					try {
+						trans = config.newTransformer();
+						trans.transform(new DOMSource(doc1), responseResult);
+					} catch (TransformerConfigurationException e) {
+						resp.setStatus(500);
+						e.printStackTrace();
+					} catch (TransformerException e) {
+						resp.setStatus(500);
+						e.printStackTrace();
+					}
+					
+					g.clearError();
+					
 				}
 				else {
-					resp.setStatus(405);
+					resp.setStatus(200);
 				}
 			}
 			else {

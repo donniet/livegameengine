@@ -24,15 +24,17 @@
 				</style>
 			</head>
 			<body>
+				<view:clientNamespace prefix="tic" namespace-uri="http://www.livegameengine.com/schemas/games/tictactoe.xsd" />
+			
 				<div>
-				<input type="button" value="Start">
-					<view:event gameEvent="start" on="click" />
-				</input>
-				<input type="button" value="Join">
-					<view:event gameEvent="join" on="click" />
-				</input>
+					<input type="button" value="Start">
+						<view:event gameEvent="start" on="click" />
+					</input>
+					<input type="button" value="Join">
+						<view:event gameEvent="join" on="click" />
+					</input>
 				</div>
-				
+								
 				<xsl:apply-templates select="scxml:data/tic:board" />
 			
 				<ul>
@@ -40,6 +42,10 @@
 			
 					<xsl:apply-templates select="document($game-meta-uri)//game:players/game:player" />
 				</ul>
+				
+				<pre>
+					<view:errorDisplay timeout="2000" />
+				</pre>
 			</body>
 		</html>
 	</xsl:template>
@@ -87,7 +93,13 @@
 	</xsl:template>
 	
 	<xsl:template match="/game:message" priority="-100">
-		<xsl:comment>Ignoring: <xsl:value-of select="game:event" /></xsl:comment>
+		<xsl:apply-templates select="game:content/*" mode="copy" />
+	</xsl:template>
+	
+	<xsl:template match="@*|*|text()" mode="copy">
+		<xsl:copy>
+			<xsl:apply-templates select="@*|*|text()" mode="copy" />
+		</xsl:copy>
 	</xsl:template>
 	
 	<xsl:template match="tic:board">
@@ -113,6 +125,12 @@
 			<xsl:if test="@highlight = 'true'">
 				<xsl:attribute name="class">highlight</xsl:attribute>
 			</xsl:if>
+			
+			<view:eventHandler event="board.highlight" mode="attribute" 
+				condition="select('count(//tic:row[{$y+1}]/tic:col[position() = {$x+1} and @highlight = &quot;true&quot;]) > 0')">
+				<view:attribute name="class">highlight</view:attribute>
+			</view:eventHandler>
+			
 			<xsl:choose>
 				<xsl:when test="count(tic:mark) > 0">
 					<xsl:for-each select="tic:mark/@player">
