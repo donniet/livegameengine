@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="utf-8" ?> 
+<scxml xmlns="http://www.w3.org/2005/07/scxml" 
+	xmlns:game="http://www.livegameengine.com/schemas/pilgrims.xsd" 
+	initialstate="initializing">
+	
+	<datamodel>
+		<script><![CDATA[
+			function initializePlayer(playerid) {
+				var colors = state.template.playerTemplate.@colors.text().toString().split(" ");
+				var playerColor = colors[state.board.players.player.length()];
+				var player = <player>
+					<playerId>{playerid}</playerId>
+					<color>{playerColor}</color>
+					<resources privateOf="../game:playerId/text()" />
+				</player>;
+				
+				for(var i = 0; i < state.template.playerTemplate.*.length(); i++) {
+					player.appendChild(playerTemplate.child(i));
+				}
+				for(var i = 0; i < state.board.resources.resource.length(); i++) {
+					var res = state.board.resources.resource[i];
+					player.resources.appendChild(<resource type={res.@type} count="0" />);
+				}
+				state.board.players.appendChild(player);
+				
+				return playerColor;
+			}
+		]]></script>
+		<data name="state">
+			<template xmlns="http://www.pilgrimsofnatac.com/schemas/game.xsd">
+				<playerTemplate colors="red green blue orange">
+					<development type="settlement" count="5" />
+					<development type="city" count="4" />
+					<development type="road" count="15" />
+				</playerTemplate>
+				
+				<polys values="5 2 6 3 8 10 9 12 11 4 8 10 9 4 5 6 3 11">
+					<poly x="0" y="2" />
+					<poly x="3" y="1" />
+					<poly x="6" y="0" />
+					<poly x="9" y="1" />
+					<poly x="12" y="2" />
+					<poly x="12" y="4" />
+					<poly x="12" y="6" />
+					<poly x="9" y="7" />
+					<poly x="6" y="8" />
+					<poly x="3" y="7" />
+					<poly x="0" y="6" />
+					<poly x="0" y="4" />
+					<poly x="3" y="3" />
+					<poly x="6" y="2" />
+					<poly x="9" y="3" />
+					<poly x="9" y="5" />
+					<poly x="6" y="6" />
+					<poly x="3" y="5" />
+					<poly x="6" y="4" />
+				</polys>
+				<ports>
+					<port tradeIn="2" tradeOut="1" resource="Ore" />
+					<port tradeIn="2" tradeOut="1" resource="Grain" />
+					<port tradeIn="2" tradeOut="1" resource="Wool" />
+					<port tradeIn="2" tradeOut="1" resource="Brick" />
+					<port tradeIn="2" tradeOut="1" resource="Wood" />
+					<port tradeIn="3" tradeOut="1" />
+					<port tradeIn="3" tradeOut="1" />
+					<port tradeIn="3" tradeOut="1" />
+					<port tradeIn="3" tradeOut="1" />
+					<locations>
+						<vertex x="10" y="1" />	<vertex x="12" y="1" />
+						<vertex x="15" y="2" /> <vertex x="16" y="3" />
+						<vertex x="16" y="5" /> <vertex x="15" y="6" />
+						<vertex x="13" y="8" /> <vertex x="12" y="9" />
+						<vertex x="9" y="10" /> <vertex x="7" y="10" />
+						<vertex x="4" y="9" /> <vertex x="3" y="8" />
+						<vertex x="1" y="6" /> <vertex x="0" y="5" />
+						<vertex x="0" y="3" /> <vertex x="1" y="2" />
+						<vertex x="4" y="1" /> <vertex x="6" y="1" />
+					</locations>
+				</ports>
+				
+			</template>
+			<board xmlns="http://www.pilgrimsofnatac.com/schemas/game.xsd">
+				<maxPlayers>4</maxPlayers>
+				<minPlayers>2</minPlayers>
+				<polys/>
+				<verteces/>
+				<edges/>
+				<players/>
+				<polytypes>
+					<polytype type="Mountains" count="3" produces="Ore" />
+					<polytype type="Fields" count="4" produces="Grain" />
+					<polytype type="Pasture" count="4" produces="Wool" />
+					<polytype type="Hills" count="3" produces="Brick" />
+					<polytype type="Forest" count="4" produces="Wood" />
+					<polytype type="Desert" count="1" />
+				</polytypes>
+				<resources>
+					<resource type="Ore" />
+					<resource type="Grain" />
+					<resource type="Wool" />
+					<resource type="Brick" />
+					<resource type="Wood" />
+				</resources>
+				<developments>
+					<development type="settlement" cost="1 Grain, 1 Wool, 1 Brick, 1 Wood" />
+					<development type="city" cost="3 Ore, 2 Grain" />
+					<development type="road" cost="1 Wood, 1 Brick" />
+				</developments>
+			</board>
+		</data>
+	</datamodel>
+	
+	<state id="initializing">
+		<transition target="waitingForPlayers" />
+	</state>
+
+	<state id="waitingForPlayers">
+		<transition event="game.playerJoin" cond="state.board.players.player.length() + 1 > parseInt(state.board.maxPlayers)">
+			<game:error messageExpr="'You cannot excede the maximum of ' + parseInt(state.board.maxPlayers) + ' players.'" />
+		</transition>
+		<transition event="game.playerJoin">
+			<script><![CDATA[
+				var role = initializePlayer(_eventdata.player.text());
+			]]></script>
+			<game:playerJoin roleExpr="role" />
+		</transition>
+	
+		<transition event="game.startGame" cond="state.board.players.player.length() < parseInt(state.board.minPlayers)">
+			<game:error messageExpr="'You cannot start until you have ' + parseInt(state.board.minPlayers) + ' players.'" />
+		</transition>
+		<transition event="game.startGame" target="createBoard" />
+		
+	</state>	
+</scxml>

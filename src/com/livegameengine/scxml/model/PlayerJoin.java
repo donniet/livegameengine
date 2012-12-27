@@ -18,6 +18,7 @@ import com.livegameengine.config.Config;
 
 public class PlayerJoin  extends Action {
 	private String role_ = null;
+	private String roleExpr_ = null;
 	private String playerExpr_ = null;
 
 	@Override
@@ -25,14 +26,14 @@ public class PlayerJoin  extends Action {
 			SCInstance scInstance, Log arg3, Collection arg4) throws ModelException,
 			SCXMLExpressionException {
 		String playerId = "";
+		Evaluator eval = scInstance.getEvaluator();
 		
-		if(playerExpr_ == null) {
-			
-		}
-		else {
-			Evaluator eval = scInstance.getEvaluator();
-			
+		if(playerExpr_ != null) {
 			playerId = eval.eval(scInstance.getRootContext(), playerExpr_).toString();
+		}
+		
+		if(roleExpr_ != null) {
+			role_ = eval.eval(scInstance.getRootContext(), roleExpr_).toString();
 		}
 		
 		Map<String,String> params = new HashMap<String,String>();
@@ -53,6 +54,12 @@ public class PlayerJoin  extends Action {
 	}
 	public void setRole(String role) {
 		role_ = role;
+	}
+	public String getRoleExpr() {
+		return roleExpr_;
+	}
+	public void setRoleExpr(String roleExpr) {
+		roleExpr_ = roleExpr;
 	}
 	public String getPlayerExpr() {
 		return playerExpr_;
