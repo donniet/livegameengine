@@ -25,6 +25,56 @@
 				
 				return playerColor;
 			}
+			function polyCorners(x, y) {
+				x = parseInt(x);
+				y = parseInt(y);
+				return [
+					{ x: 1 + x, y: 0 + y },
+					{ x: 3 + x, y: 0 + y },
+					{ x: 4 + x, y: 1 + y },
+					{ x: 3 + x, y: 2 + y },
+					{ x: 1 + x, y: 2 + y },
+					{ x: 0 + x, y: 1 + y }
+				];
+			}
+			function instantiateTemplate() {
+				var board = state.board;
+				var template = state.template;
+				
+				var index = new Object();
+				
+				for(var i = 0; i < template.polys.poly.length(); i++) {
+					var p = template.polys.poly[i];
+					
+					var pv = util.polyCorners(p.@x, p.@y);
+					var last = pv[pv.length - 1];
+					
+					function s(p) { return "(" + p.x + "," + p.y + ")"; };
+					function e(p1,p2) { return "(" + p1.x + "," + p1.y + "," + p2.x + "," + p2.y + ")"; };
+					
+					for(var j = 0; j < pv.length; j++) {
+						var c = pv[j];
+						
+						if(!index[s(c)]) {
+							board.verteces.appendChild(<vertex x={c.x} y={c.y} />);
+							index[s(c)] = true;
+						}
+						
+						if((last.@x < c.x || (last.@x == c.x && last.@y < c.y)) && !index[e(last,c)]) {
+							board.edges.appendChild(<edge x1={last.x} y1={last.y} x2={c.x} y2={c.y} />);
+							index[e(last,c)] = true;
+						}
+						else if((last.@x > c.@x || (last.@x == c.@x && last.@y > c.@y)) && !index[e(c,last)]) {
+							board.edges.appendChild(<edge x2={last.x} y2={last.y} x1={c.x} y1={c.y} />);
+							index[e(c,last)] = true;
+						}
+						
+						last = c;
+					}
+					
+					board.polys.appendChild(<poly x={p.@x} y={p.@y} />);
+				}
+			}
 		]]></script>
 		<data name="state">
 			<template xmlns="http://www.livegameengine.com/schemas/pilgrims.xsd">
@@ -82,6 +132,7 @@
 			<board xmlns="http://www.livegameengine.com/schemas/pilgrims.xsd">
 				<maxPlayers>4</maxPlayers>
 				<minPlayers>2</minPlayers>
+				<currentPlayer>0</currentPlayer>
 				<polys/>
 				<verteces/>
 				<edges/>
@@ -134,7 +185,9 @@
 	<state id="createBoard">
 		<onentry>
 			<script><![CDATA[
-			
+				instantiateTemplate();
+				
+				
 			]]></script>
 		</onentry>
 	</state>	
