@@ -47,6 +47,7 @@ import com.livegameengine.scxml.model.Error;
 import com.livegameengine.scxml.model.FlagStateAsImportant;
 import com.livegameengine.scxml.model.PlayerJoin;
 import com.livegameengine.scxml.model.SendWatcherEvent;
+import com.livegameengine.scxml.model.StartGame;
 import com.livegameengine.scxml.semantics.SCXMLGameSemanticsImpl;
 import com.sun.org.apache.bcel.internal.generic.NEW;
 import com.sun.org.apache.xerces.internal.dom.ElementNSImpl;
@@ -218,6 +219,7 @@ public class Game implements Scriptable, EventDispatcher, SCXMLListener, XmlSeri
 		customActions.add(new CustomAction(Config.getInstance().getGameEngineNamespace(), "flagStateAsImportant", FlagStateAsImportant.class));
 		customActions.add(new CustomAction(Config.getInstance().getGameEngineNamespace(), "sendWatcherEvent", SendWatcherEvent.class));
 		customActions.add(new CustomAction(Config.getInstance().getGameEngineNamespace(), "completeGame", CompleteGame.class));
+		customActions.add(new CustomAction(Config.getInstance().getGameEngineNamespace(), "startGame", StartGame.class));
 				
 		scxml = null;
 		try {
@@ -427,6 +429,10 @@ public class Game implements Scriptable, EventDispatcher, SCXMLListener, XmlSeri
 						isError_ = true;
 						errorMessage_ = "invalid player id, likely a problem with the scxml game rules";
 					}
+				}
+				else if(event.equals("game.startGame")) {
+					isDirty_ = true;
+					started = new Date();
 				}
 				else if(event.equals("game.completeGame")) {
 					if(params.containsKey("winner")) {

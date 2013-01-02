@@ -69,6 +69,6 @@ public class Error extends Action {
 	}
 
 	public void setMessageExpr(String message) {
-		this.messageexpr = messageexpr;
+		this.messageexpr = message;
 	}
 }

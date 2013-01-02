@@ -72,11 +72,11 @@
 					function e(p1,p2) { return "(" + p1.x + "," + p1.y + "," + p2.x + "," + p2.y + ")"; };
 					
 					for(var j = 0; j < pv.length; j++) {
-						log.info("corner: " + j + ", of poly " + i);
+						//log.info("corner: " + j + ", of poly " + i);
 						var c = pv[j];
 						
 						if(!index[s(c)]) {
-							log.info("adding point: " + s(c));
+							//log.info("adding point: " + s(c));
 							board.verteces.appendChild(<vertex x={c.x} y={c.y} />);
 							index[s(c)] = true;
 						}
@@ -192,7 +192,6 @@
 		</transition>
 		<transition event="game.playerJoin">
 			<script><![CDATA[
-				log.info("eventdata: " + _eventdata.toXMLString());
 				var role = initializePlayer(_eventdata.text());
 			]]></script>
 			<game:playerJoin roleExpr="role" />
@@ -211,8 +210,8 @@
 				
 				var tilesenum = new Array();
 				
-				for(var i = 0; i < state.template.polytypes.polytype.length(); i++) {
-					var pt = state.template.polytypes.polytype[i];
+				for(var i = 0; i < state.board.polytypes.polytype.length(); i++) {
+					var pt = state.board.polytypes.polytype[i];
 					var d = parseInt(pt.@count);
 					
 					while(d-- > 0) {
@@ -282,6 +281,7 @@
 			<script><![CDATA[
 				state.board.appendChild(<firstPlacement>true</firstPlacement>);
 			]]></script>
+			<game:startGame />
 		</transition>
 	</state>	
 	
