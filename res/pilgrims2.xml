@@ -1,21 +1,40 @@
 <?xml version="1.0" encoding="utf-8" ?> 
 <scxml xmlns="http://www.w3.org/2005/07/scxml" 
-	xmlns:game="http://www.livegameengine.com/schemas/pilgrims.xsd" 
+	xmlns:game="http://www.livegameengine.com/schemas/game.xsd" 
 	initialstate="initializing">
 	
 	<datamodel>
 		<script><![CDATA[
+			p = "http://www.livegameengine.com/schemas/pilgrims.xsd";
+			g = "http://www.livegameengine.com/schemas/game.xsd";
+			s = "http://www.w3.org/2005/07/scxml";
+			sns = new Namespace(s);
+			gns = new Namespace(g);
+			pns = new Namespace(p);
+			default xml namespace = p;
+			
+			
+		
+			function shuffle(arr) {
+				var len = arr.length;
+				for(var i = 0; i < len; i++) {
+					var p = Math.floor(Math.random() * len);
+					var t = arr[i];
+					arr[i] = arr[p];
+					arr[p] = t;
+				}
+			}
 			function initializePlayer(playerid) {
-				var colors = state.template.playerTemplate.@colors.text().toString().split(" ");
+				var colors = state.template.playerTemplate.@colors.toString().split(" ");
 				var playerColor = colors[state.board.players.player.length()];
 				var player = <player>
 					<playerId>{playerid}</playerId>
 					<color>{playerColor}</color>
-					<resources privateOf="../game:playerId/text()" />
+					<resources privateOf="../*[local-name() = 'playerId']/text()" />
 				</player>;
 				
 				for(var i = 0; i < state.template.playerTemplate.*.length(); i++) {
-					player.appendChild(playerTemplate.child(i));
+					player.appendChild(state.template.playerTemplate.child(i));
 				}
 				for(var i = 0; i < state.board.resources.resource.length(); i++) {
 					var res = state.board.resources.resource[i];
@@ -46,25 +65,27 @@
 				for(var i = 0; i < template.polys.poly.length(); i++) {
 					var p = template.polys.poly[i];
 					
-					var pv = util.polyCorners(p.@x, p.@y);
+					var pv = polyCorners(p.@x, p.@y);
 					var last = pv[pv.length - 1];
 					
 					function s(p) { return "(" + p.x + "," + p.y + ")"; };
 					function e(p1,p2) { return "(" + p1.x + "," + p1.y + "," + p2.x + "," + p2.y + ")"; };
 					
 					for(var j = 0; j < pv.length; j++) {
+						log.info("corner: " + j + ", of poly " + i);
 						var c = pv[j];
 						
 						if(!index[s(c)]) {
+							log.info("adding point: " + s(c));
 							board.verteces.appendChild(<vertex x={c.x} y={c.y} />);
 							index[s(c)] = true;
 						}
 						
-						if((last.@x < c.x || (last.@x == c.x && last.@y < c.y)) && !index[e(last,c)]) {
+						if((last.x < c.x || (last.x == c.x && last.y < c.y)) && !index[e(last,c)]) {
 							board.edges.appendChild(<edge x1={last.x} y1={last.y} x2={c.x} y2={c.y} />);
 							index[e(last,c)] = true;
 						}
-						else if((last.@x > c.@x || (last.@x == c.@x && last.@y > c.@y)) && !index[e(c,last)]) {
+						else if((last.x > c.x || (last.x == c.x && last.y > c.y)) && !index[e(c,last)]) {
 							board.edges.appendChild(<edge x2={last.x} y2={last.y} x1={c.x} y1={c.y} />);
 							index[e(c,last)] = true;
 						}
@@ -171,7 +192,8 @@
 		</transition>
 		<transition event="game.playerJoin">
 			<script><![CDATA[
-				var role = initializePlayer(_eventdata.player.text());
+				log.info("eventdata: " + _eventdata.toXMLString());
+				var role = initializePlayer(_eventdata.text());
 			]]></script>
 			<game:playerJoin roleExpr="role" />
 		</transition>
@@ -187,8 +209,83 @@
 			<script><![CDATA[
 				instantiateTemplate();
 				
+				var tilesenum = new Array();
+				
+				for(var i = 0; i < state.template.polytypes.polytype.length(); i++) {
+					var pt = state.template.polytypes.polytype[i];
+					var d = parseInt(pt.@count);
+					
+					while(d-- > 0) {
+						tilesenum.push(pt.@type);
+					} 
+				}
+				
+				var polyproduces = new Object();
+				
+				for(var i = 0; i < state.board.polytypes.polytype.length(); i++) {
+					var pt = state.board.polytypes.polytype[i];
+					
+					polyproduces[pt.@type.toString()] = pt.@produces.toString();
+				}
+				
+				shuffle(tilesenum);
+				
+				var polyvalues = state.template.polys.@values.split(" ");
+				
+				for(var i = 0, j = 0; i < state.board.polys.poly.length() && i < tilesenum.length; i++) {
+					var p = state.board.polys.poly[i];
+					var t = tilesenum[i];
+					var v = null;
+					
+					if(j < polyvalues.length) {
+						v = polyvalues[j];
+					}
+					
+					var prod = polyproduces[t];
+					
+					if(prod) {
+						p.@value = v;
+						p.@type = t.toString();
+						j++;
+					}
+					else {
+						p.@type = t;
+					}
+				}
+				
+				delete tilesenum;
+				delete polyproduces;
+				
+				var ports = new Array();
+				state.board.appendChild(<ports></ports>);
+				
+				for(var i = 0; i < state.template.ports.port.length(); i++) {
+					ports[i] = i;
+				}
+				
+				shuffle(ports);
+				
+				for(var i = 0; i < state.template.ports.locations.vertex.length(); i++) {
+					var loc = state.template.ports.locations.vertex[i];
+					var port = state.template.ports.port[ports[(i/2)>>>0]];
+					
+					var p = <port x={loc.@x} y={loc.@y} tradeIn={port.@tradeIn} tradeOut={port.@tradeOut} resource={port.@resource} />;
+					 
+					state.board.ports.appendChild(p);		
+				}
+				
+				delete ports;
 				
 			]]></script>
 		</onentry>
+		<transition target="placement">
+			<script><![CDATA[
+				state.board.appendChild(<firstPlacement>true</firstPlacement>);
+			]]></script>
+		</transition>
 	</state>	
+	
+	<state id="placement" initial="placement.buildSettlement">
+		
+	</state>
 </scxml>

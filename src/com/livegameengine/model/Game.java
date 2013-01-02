@@ -114,7 +114,7 @@ import javax.xml.transform.stream.StreamSource;
 
 @PersistenceCapable(detachable = "true") 
 //@FetchGroup(name = "GameGroup", members = { @Persistent(name="players") })
-public class Game implements Scriptable, EventDispatcher, SCXMLListener, XmlSerializable {
+public class Game implements Scriptable, EventDispatcher, SCXMLListener, XmlSerializable, ErrorReporter {
 	@NotPersistent
 	private Scriptable parent_, prototype_;
 		
@@ -207,7 +207,7 @@ public class Game implements Scriptable, EventDispatcher, SCXMLListener, XmlSeri
 	private void init() throws GameLoadException {
 		//GameType gt = getGameType();
 		//InputStream bis = new ByteArrayInputStream(gt.getStateChart());
-		InputStream bis = Game.class.getResourceAsStream("/tictac5.xml");
+		InputStream bis = Game.class.getResourceAsStream("/pilgrims2.xml");
 		
 		loadWarnings = new ArrayList<Exception>();
 		
@@ -244,15 +244,8 @@ public class Game implements Scriptable, EventDispatcher, SCXMLListener, XmlSeri
 		}
 
 		eval = new JsEvaluator();
-		ErrorReporter rep = new ErrorReporter() {
-			@Override
-			public void onError(String errCode, String errDetail, Object errCtx) {
-				// TODO really handle errors here.
-				getLog().error(errCode + ": " + errDetail);
-			}
-		};
 		
-		exec = new SCXMLExecutor(eval, null, rep, new SCXMLGameSemanticsImpl());
+		exec = new SCXMLExecutor(eval, null, this, new SCXMLGameSemanticsImpl());
 		exec.addListener(scxml, this);
 		exec.setEventdispatcher(this);
 		exec.setStateMachine(scxml);
@@ -289,6 +282,14 @@ public class Game implements Scriptable, EventDispatcher, SCXMLListener, XmlSeri
 		}
 		isDirty_ = false;
 		
+	}
+	
+	@Override
+	public void onError(String errCode, String errDetail, Object errCtx) {
+		// TODO really handle errors here.
+		getLog().error(errCode + ": " + errDetail);
+		isError_ = true;
+		errorMessage_ = "There was an error executing the game rules.";
 	}
 	
 	public boolean getPersisted() {

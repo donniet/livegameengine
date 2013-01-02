@@ -190,7 +190,7 @@ public class GameTransformer extends Transformer {
 		
 		Result res1 = new StreamResult(bos);
 				
-		Source frontEndSource = new StreamSource(GameTransformer.class.getResourceAsStream("/tictactoe_view5.xslt"));
+		Source frontEndSource = new StreamSource(GameTransformer.class.getResourceAsStream("/pilgrims_view.xslt"));
 		/*
 		ByteArrayInputStream bis = new ByteArrayInputStream(gt.getFrontEnd());
 		Source frontEndSource = new StreamSource(bis);

@@ -31,6 +31,12 @@
 </xsl:text>
 	</xsl:template>
 		
+	<xsl:template match="comment()">
+		<xsl:comment>
+			<xsl:value-of select="." />
+		</xsl:comment>
+	</xsl:template>
+		
 	<xsl:template match="html:html">
 		<xsl:call-template name="write-doctype" />
 		<xsl:copy>

@@ -552,7 +552,7 @@ ViewConstructor.prototype.handleClientMessage = function(clientMessage) {
 	
 	var handlers = this.handlers_[clientMessage.event];
 	
-	console.log("handler: " + handlers.toString());
+	console.log("handler: " + (handlers ? handlers.toString() : "null"));
 	
 	if(handlers && handlers.length > 0) {
 		for(var i = 0; i < handlers.length; i++) {

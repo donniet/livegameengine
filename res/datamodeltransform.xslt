@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <xsl:stylesheet version="2.0" 
-	xmlns="http://www.pilgrimsofnatac.com/schemas/game.xsd" 
-	xmlns:game="http://www.pilgrimsofnatac.com/schemas/game.xsd"
+	xmlns:view="http://www.livegameengine.com/schemas/view.xsd"
+	xmlns:game="http://www.livegameengine.com/schemas/game.xsd"
+	xmlns="http://www.livegameengine.com/schemas/game.xsd"
 	xmlns:xsl="http://www.w3.org/1999/XSL/Transform" 
 	xmlns:xalan="http://xml.apache.org/xalan"
 	xmlns:fn="http://www.w3.org/2005/xpath-functions">
