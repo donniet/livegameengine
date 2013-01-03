@@ -1,5 +1,6 @@
 package com.livegameengine.model;
 
+import java.beans.XMLEncoder;
 import java.util.List;
 
 import javax.jdo.PersistenceManager;

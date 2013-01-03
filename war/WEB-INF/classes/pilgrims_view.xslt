@@ -140,6 +140,13 @@
 						stroke: #FF0000;
 						stroke-width: 1px;
 					}
+					.hex-hitarea {
+						fill:#00FF00;
+						opacity:0;
+					}
+					.hex-hitarea:hover {
+						opacity:0.5;
+					}
 					.hexlabel-back {
 						fill:#F5F5FF;
 						stroke:#CCCCCC;
@@ -187,6 +194,7 @@
 					    stroke-width:1;
 					}
 					
+					
 				</style>
 			</head>
 			
@@ -200,11 +208,9 @@
 				
 				<div id="board">
 					<svg:svg width="1000px" height="1000px" baseProfile="full" version="1.1">
-						<svg:g id="board">
-							<xsl:apply-templates select="pil:polys/pil:poly" />
-							
-							<view:eventHandler event="game.startGame" mode="replace" />
-						</svg:g>
+						<xsl:apply-templates select="pil:polys" />
+			
+						<view:eventHandler event="game.startGame" mode="replace" />			
 					</svg:svg>
 				</div>
 			</body>
@@ -212,7 +218,13 @@
 	</xsl:template>
 	
 	<xsl:template match="/game:message[game:event = 'game.startGame']">
-		<xsl:apply-templates select="$meta-doc/game:game/game:mostRecentState//scxml:data[@name='state']/game:board/game:polys/game:poly" />
+		<xsl:apply-templates select="$meta-doc/game:game/game:mostRecentState//scxml:data[@name='state']/pil:board/pil:polys" />
+	</xsl:template>
+	
+	<xsl:template match="pil:polys">
+		<svg:g id="board">
+			<xsl:apply-templates select="pil:poly" />
+		</svg:g>
 	</xsl:template>
 	
 	<xsl:template match="pil:poly">
@@ -285,6 +297,8 @@
 					<xsl:value-of select="@value" />
 				</svg:text>
 			</xsl:if>
+			<svg:polygon class="hex-hitarea" points="{$outerpoints}" />
+			
 		</svg:g>
 	</xsl:template>
 	

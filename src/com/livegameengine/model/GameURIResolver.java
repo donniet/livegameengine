@@ -13,6 +13,9 @@ import javax.xml.transform.URIResolver;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamSource;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
 import com.livegameengine.config.Config;
 
 public class GameURIResolver implements URIResolver {
@@ -58,6 +61,9 @@ public class GameURIResolver implements URIResolver {
 		
 		writer.writeEndDocument();
 		writer.flush();
+		
+		//Log log = LogFactory.getLog(GameURIResolver.class);
+		//log.info(baos.toString());
 		
 		return new StreamSource(new ByteArrayInputStream(baos.toByteArray()));
 	}

@@ -612,8 +612,10 @@ ViewConstructor.prototype.handleClientMessage = function(clientMessage) {
 			else {
 				if(h.mode == "replace") {
 					emptyNode(h.content);
-				}			
-				this.parseMessageResponse(h.content, clientMessage.content);
+				}
+				for(var i = 0; i < clientMessage.content.childNodes.length; i++) {
+					this.parseMessageResponse(h.content, clientMessage.content.childNodes[i]);
+				}
 			}
 		}
 	}
