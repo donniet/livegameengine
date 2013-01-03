@@ -8,6 +8,7 @@
 	xmlns:scxml="http://www.w3.org/2005/07/scxml"
 	xmlns:xalan="http://xml.apache.org/xalan"
 	xmlns:ex="http://exslt.org/common"
+	xmlns:math="http://exslt.org/math"
 	xmlns:fn="http://www.w3.org/2005/xpath-functions"
 	xmlns:svg="http://www.w3.org/2000/svg"
 	exclude-result-prefixes="xsl xalan fn scxml game ex">
@@ -17,6 +18,8 @@
 	
 	<xsl:variable name="sqrt3over2" select="0.86602540378" />
 	<xsl:variable name="edgeLength" select="85" />
+	<xsl:variable name="edgeHitProportion" select="0.1" />
+	<xsl:variable name="vertexHitProportion" select="0.2" />
 	<xsl:variable name="polycorners">
 		<game:corner x="1" y="0" />
 		<game:corner x="3" y="0" />
@@ -105,6 +108,58 @@
 		<xsl:value-of select="($cy0 + $cy4) div 2.0" />
 	</xsl:template>
 	
+	<xsl:template name="edgelength">
+		<xsl:param name="nx1" />
+		<xsl:param name="ny1" />
+		<xsl:param name="nx2" />
+		<xsl:param name="ny2" />
+		
+		<xsl:variable name="x1"><xsl:call-template name="cx"><xsl:with-param name="nx" select="$nx1" /></xsl:call-template></xsl:variable>
+		<xsl:variable name="y1"><xsl:call-template name="cy"><xsl:with-param name="ny" select="$ny1" /></xsl:call-template></xsl:variable>
+		<xsl:variable name="x2"><xsl:call-template name="cx"><xsl:with-param name="nx" select="$nx2" /></xsl:call-template></xsl:variable>
+		<xsl:variable name="y2"><xsl:call-template name="cy"><xsl:with-param name="ny" select="$ny2" /></xsl:call-template></xsl:variable>
+		
+		<xsl:value-of select="math:sqrt( ($x2 - $x1) * ($x2 - $x1) + ($y2 - $y1) * ($y2 - $y1) )" />		
+	</xsl:template>
+	
+	<xsl:template name="edgepolypoints">
+		<xsl:param name="edgewidth" />
+		<xsl:param name="nx1" />
+		<xsl:param name="ny1" />
+		<xsl:param name="nx2" />
+		<xsl:param name="ny2" />
+		
+		<xsl:variable name="x1"><xsl:call-template name="cx"><xsl:with-param name="nx" select="$nx1" /></xsl:call-template></xsl:variable>
+		<xsl:variable name="y1"><xsl:call-template name="cy"><xsl:with-param name="ny" select="$ny1" /></xsl:call-template></xsl:variable>
+		<xsl:variable name="x2"><xsl:call-template name="cx"><xsl:with-param name="nx" select="$nx2" /></xsl:call-template></xsl:variable>
+		<xsl:variable name="y2"><xsl:call-template name="cy"><xsl:with-param name="ny" select="$ny2" /></xsl:call-template></xsl:variable>
+		
+		<xsl:variable name="xm" select="($x2 - $x1) div ($y2 - $y1)" />
+		<xsl:variable name="ym" select="1.0 div $xm" />
+		<xsl:variable name="dx">
+			<xsl:choose>
+				<xsl:when test="$x2 &gt; $x1">
+					<xsl:value-of select="-$edgewidth div math:sqrt($xm * $xm + 1)" />
+				</xsl:when>
+				<xsl:otherwise>
+					<xsl:value-of select="$edgewidth div math:sqrt($xm * $xm + 1)" />
+				</xsl:otherwise>
+			</xsl:choose>
+		</xsl:variable>
+		<xsl:variable name="dy">
+			<xsl:choose>
+				<xsl:when test="$y2 &gt; $y1">
+					<xsl:value-of select="-$edgewidth div math:sqrt($ym * $ym + 1)" />
+				</xsl:when>
+				<xsl:otherwise>
+					<xsl:value-of select="$edgewidth div math:sqrt($ym * $ym + 1)" />
+				</xsl:otherwise>
+			</xsl:choose>
+		</xsl:variable>
+		
+		<xsl:value-of select="concat($x1 - $dx, ' ', $y1 + $dy, ' ', $x2 - $dx, ' ', $y2 + $dy, ' ', $x2 + $dx, ' ', $y2 - $dy, ' ', $x1 + $dx, ' ', $y1 - $dy)" />
+	</xsl:template>
+	
 		
 	<xsl:template match="/game:message">
 		<xsl:apply-templates select="game:content/*" mode="copy" />
@@ -159,6 +214,24 @@
 						dominant-baseline:central;
 						text-anchor:middle;
 					}
+					.edge {
+					    fill:rgb(0,255,0);
+					    opacity:0;
+					    stroke:rgb(0,255,0);
+					    stroke-width:1;
+					}
+					.edge:hover {
+					    opacity:0.5;
+					}
+					.vertex {
+					    fill:rgb(0,255,0);
+					    opacity:0;
+					    stroke:#00ff00;
+					    stroke-width:1;
+					}
+					.vertex:hover {
+					    opacity:0.5;
+					}
 					.labelemph {
 						stroke:#FF0000;
 						fill:#FF0000;
@@ -193,8 +266,6 @@
 					    stroke:#D8D8B0;
 					    stroke-width:1;
 					}
-					
-					
 				</style>
 			</head>
 			
@@ -208,9 +279,13 @@
 				
 				<div id="board">
 					<svg:svg width="1000px" height="1000px" baseProfile="full" version="1.1">
-						<xsl:apply-templates select="pil:polys" />
-			
-						<view:eventHandler event="game.startGame" mode="replace" />			
+						<svg:g id="board">
+							<xsl:apply-templates select="pil:polys" />
+							<xsl:apply-templates select="pil:edges" />
+							<xsl:apply-templates select="pil:verteces" />
+				
+							<view:eventHandler event="game.startGame" mode="replace" />
+						</svg:g>
 					</svg:svg>
 				</div>
 			</body>
@@ -219,12 +294,54 @@
 	
 	<xsl:template match="/game:message[game:event = 'game.startGame']">
 		<xsl:apply-templates select="$meta-doc/game:game/game:mostRecentState//scxml:data[@name='state']/pil:board/pil:polys" />
+		<xsl:apply-templates select="$meta-doc/game:game/game:mostRecentState//scxml:data[@name='state']/pil:board/pil:edges" />
+		<xsl:apply-templates select="$meta-doc/game:game/game:mostRecentState//scxml:data[@name='state']/pil:board/pil:verteces" />
 	</xsl:template>
 	
-	<xsl:template match="pil:polys">
-		<svg:g id="board">
-			<xsl:apply-templates select="pil:poly" />
+	<xsl:template match="pil:verteces">
+		<xsl:apply-templates select="pil:vertex" />
+	</xsl:template>
+	
+	<xsl:template match="pil:vertex">
+		<xsl:variable name="x">
+			<xsl:call-template name="cx">
+				<xsl:with-param name="nx" select="@x" />
+			</xsl:call-template>
+		</xsl:variable>
+		<xsl:variable name="y">
+			<xsl:call-template name="cy">
+				<xsl:with-param name="ny" select="@y" />
+			</xsl:call-template>
+		</xsl:variable>
+	
+		<svg:g>
+			<svg:circle class="vertex" cx="{$x}" cy="{$y}" r="{$edgeLength * $vertexHitProportion}" />
 		</svg:g>
+	</xsl:template>
+	
+	<xsl:template match="pil:edges">
+		<xsl:apply-templates select="pil:edge" />
+	</xsl:template>
+	
+	<xsl:template match="pil:edge">		
+		<xsl:variable name="points">
+			<xsl:call-template name="edgepolypoints">
+				<xsl:with-param name="edgewidth" select="$edgeLength * $edgeHitProportion" />
+				<xsl:with-param name="nx1" select="@x1" />
+				<xsl:with-param name="ny1" select="@y1" />
+				<xsl:with-param name="nx2" select="@x2" />
+				<xsl:with-param name="ny2" select="@y2" />
+			</xsl:call-template>
+		</xsl:variable>
+	
+		<svg:g>
+			<svg:polygon class="edge" points="{$points}" />
+		</svg:g>
+	</xsl:template>
+	
+	
+	<xsl:template match="pil:polys">
+		<xsl:apply-templates select="pil:poly" />
 	</xsl:template>
 	
 	<xsl:template match="pil:poly">
