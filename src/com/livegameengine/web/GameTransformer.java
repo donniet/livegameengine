@@ -225,7 +225,10 @@ public class GameTransformer extends Transformer {
 		params.put("clientMessageUrl", "message");
 		
 		params.put("version", gt.getClientVersion());
-				
+			
+		DocumentFragment frag = doc.createDocumentFragment();
+		
+		
 		switch(outputType_) {
 		case Data:
 			//config.transformAsDatamodel(xmlSource, outputTarget, gameUser_.getHashedUserId());
@@ -233,14 +236,15 @@ public class GameTransformer extends Transformer {
 			break;
 		case Raw:
 			//config.transformAsDatamodel(xmlSource, new DOMResult(doc), gameUser_.getHashedUserId());
-			config.transformAsDatamodel(new StreamSource(new ByteArrayInputStream(temp.toByteArray())), new DOMResult(doc), gameUser_.getHashedUserId());
-			frontendTrans.transform(new DOMSource(doc), outputTarget);
+			
+			config.transformAsDatamodel(new StreamSource(new ByteArrayInputStream(temp.toByteArray())), new DOMResult(frag), gameUser_.getHashedUserId());
+			frontendTrans.transform(new DOMSource(frag), outputTarget);
 			break;
 		case View:
 		
 			//config.transformAsDatamodel(xmlSource, new DOMResult(doc), gameUser_.getHashedUserId());
-			config.transformAsDatamodel(new StreamSource(new ByteArrayInputStream(temp.toByteArray())), new DOMResult(doc), gameUser_.getHashedUserId());
-			frontendTrans.transform(new DOMSource(doc), res1);
+			config.transformAsDatamodel(new StreamSource(new ByteArrayInputStream(temp.toByteArray())), new DOMResult(frag), gameUser_.getHashedUserId());
+			frontendTrans.transform(new DOMSource(frag), res1);
 			//log.info("content: " + bos.toString());
 			
 			Document front = null;

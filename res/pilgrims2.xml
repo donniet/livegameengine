@@ -104,7 +104,7 @@
 			function hasDevelopment(obj) {
 				return !!obj && !!obj.development && obj.development.length() > 0;
 			}
-			function adjecentVertexFromVertex(x, y) {
+			function adjacentVertexFromVertex(x, y) {
 				var edges1 = state.board.edges.edge.(@x1 == x && @y1 == y);
 				var edges2 = state.board.edges.edge.(@x2 == x && @y2 == y);
 				
@@ -120,11 +120,11 @@
 				}
 				return ret;
 			}
-			function hasAdjecentDevelopment(x, y) {
-				var adjecent = adjecentVertexFromVertex(x, y);
+			function hasAdjacentDevelopment(x, y) {
+				var adjacent = adjacentVertexFromVertex(x, y);
 				
-				for(var i = 0; i < adjecent.length(); i++) {
-					var v = adjecent[i];
+				for(var i = 0; i < adjacent.length(); i++) {
+					var v = adjacent[i];
 					if(v.development.length() > 0)
 						return true;
 				}
@@ -132,15 +132,28 @@
 			}
 			function placeVertexDevelopment(dev, col, x, y) {
 				log.info("placing development: " + dev + "-" + col + " " + x + "," + y);
-				var p = board.players.player.(color.text() == col)[0];
+				var p = state.board.players.player.(color.text() == col)[0];
 				var pd = p.development.(@type == dev)[0];
-				var v = board.verteces.vertex.(@x==x && @y==y)[0];
+				var v = state.board.verteces.vertex.(@x==x && @y==y)[0];
 				
 				//log.info("player: " + pId + ":" + p);
 				//log.info("vertex: " + v.toXMLString());
 				
 				v.appendChild(<development type={pd.@type} color={col} count="1" />);
 				pd.@count -= 1;
+			}
+			function distributeAdjacentResources(player, x, y) {
+				var adjacentPolys = adjacentPolyFromVertex(x, y);
+				log.info("found " + adjacentPolys.length() + " adjacent polys to " + _eventdata.vertex.@x + ", " + _eventdata.vertex.@y);
+				
+				for(var i = 0; i < adjacentPolys.length(); i++) {
+					var p = adjacentPolys[i];
+					
+					var produces = state.board.polytypes.polytype.(@type == p.@type).@produces;
+					var pr = player.resources.resource.(@type == produces);
+					
+					pr.@count = parseInt(pr.@count) + 1;								
+				}
 			}
 		]]></script>
 		<data name="state">
@@ -354,8 +367,14 @@
 					
 					placeVertexDevelopment("settlement", player.color, _eventdata.vertex.@x, _eventdata.vertex.@y);
 					
+					if(state.board.firstPlacement != "true") {
+						distributeAdjacentResources(player, _eventdata.vertex.@x, _eventdata.vertex.@y);
+					}
 				]]></script>
 			</transition>
+		</state>
+		<state id="placement.buildRoad">
+			
 		</state>
 		
 	</state>
