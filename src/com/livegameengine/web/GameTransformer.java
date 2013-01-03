@@ -227,7 +227,10 @@ public class GameTransformer extends Transformer {
 		params.put("version", gt.getClientVersion());
 			
 		DocumentFragment frag = doc.createDocumentFragment();
+		DocumentFragment frag2 = doc.createDocumentFragment();
 		
+		Node root = doc.createElementNS(config.getGameEngineNamespace(), "root");
+		Node root2 = doc.createElementNS(config.getGameEngineNamespace(), "root");
 		
 		switch(outputType_) {
 		case Data:
@@ -237,40 +240,25 @@ public class GameTransformer extends Transformer {
 		case Raw:
 			//config.transformAsDatamodel(xmlSource, new DOMResult(doc), gameUser_.getHashedUserId());
 			
-			config.transformAsDatamodel(new StreamSource(new ByteArrayInputStream(temp.toByteArray())), new DOMResult(frag), gameUser_.getHashedUserId());
-			frontendTrans.transform(new DOMSource(frag), outputTarget);
+			config.transformAsDatamodel(new StreamSource(new ByteArrayInputStream(temp.toByteArray())), new DOMResult(root), gameUser_.getHashedUserId());
+			frontendTrans.transform(new DOMSource(root), outputTarget);
 			break;
 		case View:
 		
 			//config.transformAsDatamodel(xmlSource, new DOMResult(doc), gameUser_.getHashedUserId());
-			config.transformAsDatamodel(new StreamSource(new ByteArrayInputStream(temp.toByteArray())), new DOMResult(frag), gameUser_.getHashedUserId());
-			frontendTrans.transform(new DOMSource(frag), res1);
+			config.transformAsDatamodel(new StreamSource(new ByteArrayInputStream(temp.toByteArray())), new DOMResult(root), gameUser_.getHashedUserId());
+			
+			int i = 0;
+			for(; i < root.getChildNodes().getLength() && root.getChildNodes().item(i).getNodeType() != Node.ELEMENT_NODE; i++) {}
+			
+			if(i >= root.getChildNodes().getLength())
+				frontendTrans.transform(new DOMSource(root), new DOMResult(root2));
+			else
+				frontendTrans.transform(new DOMSource(root.getChildNodes().item(i)), new DOMResult(root2));
+			
 			//log.info("content: " + bos.toString());
 			
-			Document front = null;
-			DocumentBuilder db = config.getDocumentBuilder();
-			InputStream frontStream = new ByteArrayInputStream(bos.toByteArray());
-			
-			try {
-				front = db.parse(frontStream);
-			} catch(SAXException e) {
-				front = null;
-			} catch (IOException e) {
-				throw new TransformerException(e);
-			}
-						
-			if(front == null) {
-				//log.info("front is null.");
-				front = config.newXmlDocument();
-				
-				Node root = front.createElementNS(config.getGameEngineNamespace(), "value");
-				root.appendChild(front.createTextNode(bos.toString()));
-				
-				front.appendChild(root);
-				
-			}
-			
-			config.transformFromResource(viewResourceName, new DOMSource(front), outputTarget, params);
+			config.transformFromResource(viewResourceName, new DOMSource(root2), outputTarget, params);
 			
 			break;
 		}

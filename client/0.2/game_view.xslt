@@ -30,6 +30,10 @@
 &lt;!DOCTYPE html PUBLIC &quot;</xsl:text><xsl:value-of select="$doctype-public" /><xsl:text disable-output-escaping="yes">&quot; &quot;</xsl:text><xsl:value-of select="$doctype-system" /><xsl:text disable-output-escaping="yes">&quot; &gt;
 </xsl:text>
 	</xsl:template>
+	
+	<xsl:template match="game:root">
+		<xsl:apply-templates />
+	</xsl:template>
 		
 	<xsl:template match="comment()">
 		<xsl:comment>

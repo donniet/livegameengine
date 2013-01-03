@@ -298,6 +298,10 @@
 		<xsl:apply-templates select="$meta-doc/game:game/game:mostRecentState//scxml:data[@name='state']/pil:board/pil:verteces" />
 	</xsl:template>
 	
+	<xsl:template match="/game:message[game:event = 'board.placeVertexDevelopment']">
+		
+	</xsl:template>
+	
 	<xsl:template match="pil:verteces">
 		<xsl:apply-templates select="pil:vertex" />
 	</xsl:template>
@@ -319,6 +323,7 @@
 				<view:event on="click" endpointEvent="click">
 					<pil:vertex x="{@x}" y="{@y}" />
 				</view:event>
+				<view:eventHandler event="board.placeVertexDevelopment" mode="replace" />
 			</svg:circle>
 		</svg:g>
 	</xsl:template>
