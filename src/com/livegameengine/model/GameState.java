@@ -223,6 +223,7 @@ public class GameState implements Scriptable, XmlSerializable {
 			writer.writeCharacters(state);
 			writer.writeEndElement();
 		}
+		writer.writeEndElement();
 		
 		writer.writeEndElement();
 	}

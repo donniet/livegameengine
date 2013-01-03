@@ -14,7 +14,9 @@
 			default xml namespace = p;
 			
 			
-		
+			function isCurrentPlayer(playerId) {
+				return playerId == state.board.players.player[state.board.currentPlayer].playerId.text();
+			}
 			function shuffle(arr) {
 				var len = arr.length;
 				for(var i = 0; i < len; i++) {
@@ -95,6 +97,50 @@
 					
 					board.polys.appendChild(<poly x={p.@x} y={p.@y} />);
 				}
+			}
+			function findVertex(board, x, y) {
+				return state.board.verteces.vertex.(@x==( x >>> 0) && @y== (y >>> 0))[0];
+			}
+			function hasDevelopment(obj) {
+				return !!obj && !!obj.development && obj.development.length() > 0;
+			}
+			function adjecentVertexFromVertex(x, y) {
+				var edges1 = state.board.edges.edge.(@x1 == x && @y1 == y);
+				var edges2 = state.board.edges.edge.(@x2 == x && @y2 == y);
+				
+				var ret = <></>;
+				
+				for(var i = 0; i < edges1.length(); i++) {
+					var edge = edges1[i];
+					ret += state.board.verteces.vertex.(@x == edge.@x2 && @y == edge.@y2);
+				}
+				for(var i = 0; i < edges2.length(); i++) {
+					var edge = edges2[i];
+					ret += state.board.verteces.vertex.(@x == edge.@x1 && @y == edge.@y1);
+				}
+				return ret;
+			}
+			function hasAdjecentDevelopment(x, y) {
+				var adjecent = adjecentVertexFromVertex(x, y);
+				
+				for(var i = 0; i < adjecent.length(); i++) {
+					var v = adjecent[i];
+					if(v.development.length() > 0)
+						return true;
+				}
+				return false;
+			}
+			function placeVertexDevelopment(dev, col, x, y) {
+				log.info("placing development: " + dev + "-" + col + " " + x + "," + y);
+				var p = board.players.player.(color.text() == col)[0];
+				var pd = p.development.(@type == dev)[0];
+				var v = board.verteces.vertex.(@x==x && @y==y)[0];
+				
+				//log.info("player: " + pId + ":" + p);
+				//log.info("vertex: " + v.toXMLString());
+				
+				v.appendChild(<development type={pd.@type} color={col} count="1" />);
+				pd.@count -= 1;
 			}
 		]]></script>
 		<data name="state">
@@ -286,6 +332,31 @@
 	</state>	
 	
 	<state id="placement" initial="placement.buildSettlement">
+		<state id="placement.buildSettlement">
+			<transition event="board.click" cond="!isCurrentPlayer(_eventdata.player.text())">
+				<game:error message="You are not the current player." />
+			</transition>
+			<transition event="board.click" cond="_eventdata.vertex.length() != 1">
+				<game:error message="You must click on a vertex to place your first settlement." />
+			</transition>
+			<transition event="board.click" cond="!findVertex(_eventdata.vertex.@x, _eventdata.vertex.@y)">
+				<game:error messageExpr="'Vertex (' + _eventdata.vertex.@x + ',' + _eventdata.vertex.@y + ') does not exist'" />
+			</transition>
+			<transition event="board.click" cond="hasDevelopment(findVertex(_eventdata.vertex.@x, _eventdata.vertex.@y))">
+				<game:error messageExpr="'Vertex (' + _eventdata.vertex.@x + ',' + _eventdata.vertex.@y + ') already has a development'" />
+			</transition>
+			<transition event="board.click" cond="hasAdjacentDevelopment(_eventdata.vertex.@x, _eventdata.vertex.@y)">
+				<game:error messageExpr="'Vertex (' + _eventdata.vertex.@x + ',' + _eventdata.vertex.@y + ') has an adjacent development'" />
+			</transition>
+			<transition event="board.click" target="placement.buildRoad">
+				<script><![CDATA[
+					var player = state.board.players.player[state.board.currentPlayer];
+					
+					placeVertexDevelopment("settlement", player.color, _eventdata.vertex.@x, _eventdata.vertex.@y);
+					
+				]]></script>
+			</transition>
+		</state>
 		
 	</state>
 </scxml>

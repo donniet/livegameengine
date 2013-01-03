@@ -1,11 +1,11 @@
-<!-- Indices written at Wed, 2 Jan 2013 22:50:21 CST -->
+<!-- Indices written at Thu, 3 Jan 2013 06:54:42 CST -->
 
 <datastore-indexes>
 
     <!-- Used 1 time in query history -->
     <datastore-index kind="ClientMessage" ancestor="false" source="auto">
         <property name="gameKey" direction="asc"/>
-        <property name="messageDate" direction="asc"/>
+        <property name="messageDate" direction="desc"/>
     </datastore-index>
 
 </datastore-indexes>

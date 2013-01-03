@@ -315,7 +315,11 @@
 		</xsl:variable>
 	
 		<svg:g>
-			<svg:circle class="vertex" cx="{$x}" cy="{$y}" r="{$edgeLength * $vertexHitProportion}" />
+			<svg:circle class="vertex" cx="{$x}" cy="{$y}" r="{$edgeLength * $vertexHitProportion}">
+				<view:event on="click" endpointEvent="click">
+					<pil:vertex x="{@x}" y="{@y}" />
+				</view:event>
+			</svg:circle>
 		</svg:g>
 	</xsl:template>
 	
@@ -335,7 +339,11 @@
 		</xsl:variable>
 	
 		<svg:g>
-			<svg:polygon class="edge" points="{$points}" />
+			<svg:polygon class="edge" points="{$points}">
+				<view:event on="click" endpointEvent="click">
+					<pil:hex x1="{@x1}" y1="{@y1}" x2="{@x2}" y2="{@y2}" />
+				</view:event>
+			</svg:polygon>
 		</svg:g>
 	</xsl:template>
 	
@@ -414,7 +422,11 @@
 					<xsl:value-of select="@value" />
 				</svg:text>
 			</xsl:if>
-			<svg:polygon class="hex-hitarea" points="{$outerpoints}" />
+			<svg:polygon class="hex-hitarea" points="{$outerpoints}">
+				<view:event on="click" endpointEvent="click">
+					<pil:hex x="{@x}" y="{@y}" />
+				</view:event>
+			</svg:polygon>
 			
 		</svg:g>
 	</xsl:template>

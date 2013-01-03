@@ -509,7 +509,7 @@ ViewConstructor.prototype.parseMessageResponse = function(parent, messageContent
 				var a = messageContent.attributes[i];
 				
 				var attr = null;
-				console.log("attribute namespace: '" + a.namespaceURI + "'");
+				//console.log("attribute namespace: '" + a.namespaceURI + "'");
 				
 				imported.setAttribute(a.nodeName, a.nodeValue);	
 			}
