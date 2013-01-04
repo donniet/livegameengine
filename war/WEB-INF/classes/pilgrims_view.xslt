@@ -28,8 +28,22 @@
 		<game:corner x="1" y="2" />
 		<game:corner x="0" y="1" />
 	</xsl:variable>
+	<xsl:variable name="hexvaluelookup">
+		<pil:h value="2" prob="1" />
+		<pil:h value="3" prob="2" />
+		<pil:h value="4" prob="3" />
+		<pil:h value="5" prob="4" />
+		<pil:h value="6" prob="5" />
+		<pil:h value="7" prob="6" />
+		<pil:h value="8" prob="5" />
+		<pil:h value="9" prob="4" />
+		<pil:h value="10" prob="3" />
+		<pil:h value="11" prob="2" />
+		<pil:h value="12" prob="1" />
+	</xsl:variable>
+	
 	<xsl:variable name="pc" select="ex:node-set($polycorners)" />
-		
+			
 	<!--  calculate the x,y coords of a hex -->
 	<xsl:template name="cx">
 		<xsl:param name="nx" />
@@ -279,29 +293,102 @@
 				
 				<div id="board">
 					<svg:svg width="1000px" height="1000px" baseProfile="full" version="1.1">
-						<svg:g id="board">
-							<xsl:apply-templates select="pil:polys" />
-							<xsl:apply-templates select="pil:edges" />
-							<xsl:apply-templates select="pil:verteces" />
+						<xsl:call-template name="board" />
 				
-							<view:eventHandler event="game.startGame" mode="replace" />
-						</svg:g>
+						<view:eventHandler event="game.startGame" mode="replace" />
 					</svg:svg>
 				</div>
 			</body>
 		</html>
 	</xsl:template>
 	
-	<xsl:template match="/game:message[game:event = 'game.startGame']">
-		<xsl:apply-templates select="$meta-doc/game:game/game:mostRecentState//scxml:data[@name='state']/pil:board/pil:polys" />
-		<xsl:apply-templates select="$meta-doc/game:game/game:mostRecentState//scxml:data[@name='state']/pil:board/pil:edges" />
-		<xsl:apply-templates select="$meta-doc/game:game/game:mostRecentState//scxml:data[@name='state']/pil:board/pil:verteces" />
+	<xsl:template name="board">
+		<svg:g id="board">
+			<xsl:apply-templates select="pil:polys" />
+			<xsl:apply-templates select="pil:edges" />
+			<xsl:apply-templates select="pil:verteces" />
+			<xsl:apply-templates select="pil:ports" />
+		</svg:g>
 	</xsl:template>
 	
+<<<<<<< Upstream, based on origin/master
 	<xsl:template match="/game:message[game:event = 'board.placeVertexDevelopment']">
 		
 	</xsl:template>
 	
+=======
+	<xsl:template match="/game:message[game:event = 'game.startGame']">
+		<svg:g id="board">
+			<xsl:apply-templates select="$meta-doc/game:game/game:mostRecentState//scxml:data[@name='state']/pil:board/pil:polys" />
+			<xsl:apply-templates select="$meta-doc/game:game/game:mostRecentState//scxml:data[@name='state']/pil:board/pil:edges" />
+			<xsl:apply-templates select="$meta-doc/game:game/game:mostRecentState//scxml:data[@name='state']/pil:board/pil:verteces" />
+			<xsl:apply-templates select="$meta-doc/game:game/game:mostRecentState//scxml:data[@name='state']/pil:board/pil:ports" />
+		</svg:g>
+	</xsl:template>
+	
+	<xsl:template name="portthirdpoint">
+		<xsl:param name="x1" />
+		<xsl:param name="x2" />
+		<xsl:param name="y1" />
+		<xsl:param name="y2" />
+		
+		
+	</xsl:template>
+	
+	<xsl:template match="pil:ports">
+		<svg:g>
+			<xsl:for-each select="pil:port">
+				<xsl:variable name="x">
+					<xsl:call-template name="cx">
+						<xsl:with-param name="nx" select="@x" />
+					</xsl:call-template>
+				</xsl:variable>
+				<xsl:variable name="y">
+					<xsl:call-template name="cy">
+						<xsl:with-param name="ny" select="@y" />
+					</xsl:call-template>
+				</xsl:variable>
+				
+				<xsl:choose>
+					<xsl:when test="(position() - 1) mod 2 = 0">
+						<svg:circle cx="{$x}" cy="{$y}" r="{$edgeLength * 0.125}" />
+					</xsl:when>
+					<xsl:otherwise>
+						<svg:circle cx="{$x}" cy="{$y}" r="{$edgeLength * 0.125}" />
+						
+						<xsl:call-template name="port-center" />					
+					</xsl:otherwise>
+				</xsl:choose>
+			</xsl:for-each>		
+		</svg:g>
+	</xsl:template>
+	
+	<xsl:template name="port-center">
+		<xsl:variable name="x1" select="preceding-sibling::pil:port[1]/@x" />
+		<xsl:variable name="y1" select="preceding-sibling::pil:port[1]/@y" />
+		<xsl:variable name="x2" select="@x" />
+		<xsl:variable name="y2" select="@y" />
+		
+		<xsl:variable name="x3">
+			<xsl:choose>
+				<xsl:when test="$x1 &lt; $x2">
+					<xsl:choose>
+						<xsl:when test="$x2 - $x1 = 1 and $x1 &lt; 8">
+							<xsl:value-of select="$x1 - 1" />
+						</xsl:when>
+						<xsl:when test="$x2 - $x1 = 1 and $x1 &gt;= 8">
+							<xsl:value-of select="$x1 + 1" />
+						</xsl:when>
+						<xsl:when test="$x2 - $x1 = 2 and $x1 &lt; 8">
+							<xsl:value-of select="($x1 + $x2) idiv 2" />
+						</xsl:when>
+					</xsl:choose>
+				</xsl:when>
+			</xsl:choose>
+		</xsl:variable>
+	</xsl:template>
+		
+>>>>>>> 6114f43 rendering ports
 	<xsl:template match="pil:verteces">
 		<xsl:apply-templates select="pil:vertex" />
 	</xsl:template>
@@ -426,6 +513,7 @@
 					</xsl:choose>
 					<xsl:value-of select="@value" />
 				</svg:text>
+				
 			</xsl:if>
 			<svg:polygon class="hex-hitarea" points="{$outerpoints}">
 				<view:event on="click" endpointEvent="click">
