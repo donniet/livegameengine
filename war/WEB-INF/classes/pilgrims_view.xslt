@@ -44,6 +44,10 @@
 	
 	<xsl:variable name="pc" select="ex:node-set($polycorners)" />
 			
+	<xsl:template match="game:root">
+		<xsl:apply-templates />
+	</xsl:template>		
+	
 	<!--  calculate the x,y coords of a hex -->
 	<xsl:template name="cx">
 		<xsl:param name="nx" />
@@ -311,12 +315,6 @@
 		</svg:g>
 	</xsl:template>
 	
-<<<<<<< Upstream, based on origin/master
-	<xsl:template match="/game:message[game:event = 'board.placeVertexDevelopment']">
-		
-	</xsl:template>
-	
-=======
 	<xsl:template match="/game:message[game:event = 'game.startGame']">
 		<svg:g id="board">
 			<xsl:apply-templates select="$meta-doc/game:game/game:mostRecentState//scxml:data[@name='state']/pil:board/pil:polys" />
@@ -380,7 +378,7 @@
 							<xsl:value-of select="$x1 + 1" />
 						</xsl:when>
 						<xsl:when test="$x2 - $x1 = 2 and $x1 &lt; 8">
-							<xsl:value-of select="($x1 + $x2) idiv 2" />
+							<xsl:value-of select="($x1 + $x2) div 2" />
 						</xsl:when>
 					</xsl:choose>
 				</xsl:when>
@@ -388,7 +386,6 @@
 		</xsl:variable>
 	</xsl:template>
 		
->>>>>>> 6114f43 rendering ports
 	<xsl:template match="pil:verteces">
 		<xsl:apply-templates select="pil:vertex" />
 	</xsl:template>

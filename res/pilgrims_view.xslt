@@ -44,6 +44,10 @@
 	
 	<xsl:variable name="pc" select="ex:node-set($polycorners)" />
 			
+	<xsl:template match="game:root">
+		<xsl:apply-templates />
+	</xsl:template>		
+	
 	<!--  calculate the x,y coords of a hex -->
 	<xsl:template name="cx">
 		<xsl:param name="nx" />
@@ -374,7 +378,7 @@
 							<xsl:value-of select="$x1 + 1" />
 						</xsl:when>
 						<xsl:when test="$x2 - $x1 = 2 and $x1 &lt; 8">
-							<xsl:value-of select="($x1 + $x2) idiv 2" />
+							<xsl:value-of select="($x1 + $x2) div 2" />
 						</xsl:when>
 					</xsl:choose>
 				</xsl:when>
