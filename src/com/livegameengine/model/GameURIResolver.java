@@ -2,6 +2,7 @@ package com.livegameengine.model;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
 
 import javax.xml.namespace.NamespaceContext;
 import javax.xml.stream.XMLOutputFactory;
@@ -41,6 +42,18 @@ public class GameURIResolver implements URIResolver {
 				throw new TransformerException("could not construct stream from current game", e);
 			}
 				
+		}
+		else if(href.startsWith("res://client/")) {
+			String clientVersion = game_.getGameType().getClientVersion();
+			
+			InputStream is = GameURIResolver.class.getResourceAsStream(String.format("/{%s}{%s}", clientVersion, href.substring(12)));
+			
+			if(is != null) {
+				return new StreamSource(is);
+			}
+			else {
+				return null;
+			}
 		}
 		
 		
