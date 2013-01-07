@@ -133,16 +133,16 @@ public class GameTransformer extends Transformer {
 					Document doc1 = config.newXmlDocument();
 					Document doc2 = config.newXmlDocument();
 					
+					DocumentFragment frag = doc2.createDocumentFragment();
+					
 					XMLStreamWriter doc1writer = factory.createXMLStreamWriter(new DOMResult(doc1));
 					cm.serializeToXml("message", doc1writer);
 					
 					Node content = Util.findFirstElementNode(doc1);
 										
-					transform_xml_helper(new DOMSource(content), new DOMResult(doc2), g, cm.getParametersAsMap());
-					
-					Node transformedContent = Util.findFirstElementNode(doc2);
-					
-					cm.serializeToXml("message", messagewriter, transformedContent);
+					transform_xml_helper(new DOMSource(content), new DOMResult(frag), g, cm.getParametersAsMap());
+										
+					cm.serializeToXml("message", messagewriter, frag);
 					
 					if(!i.hasNext()) {
 						Node latestDateNode = doc.createAttribute("latestDate");
@@ -225,12 +225,9 @@ public class GameTransformer extends Transformer {
 		params.put("clientMessageUrl", "message");
 		
 		params.put("version", gt.getClientVersion());
-			
-		DocumentFragment frag = doc.createDocumentFragment();
-		DocumentFragment frag2 = doc.createDocumentFragment();
 		
-		Node root = doc.createElementNS(config.getGameEngineNamespace(), "root");
-		Node root2 = doc.createElementNS(config.getGameEngineNamespace(), "root");
+		DOMResult dres1 = new DOMResult();
+		DOMResult dres2 = new DOMResult();
 		
 		switch(outputType_) {
 		case Data:
@@ -240,25 +237,19 @@ public class GameTransformer extends Transformer {
 		case Raw:
 			//config.transformAsDatamodel(xmlSource, new DOMResult(doc), gameUser_.getHashedUserId());
 			
-			config.transformAsDatamodel(new StreamSource(new ByteArrayInputStream(temp.toByteArray())), new DOMResult(root), gameUser_.getHashedUserId());
-			frontendTrans.transform(new DOMSource(root), outputTarget);
+			config.transformAsDatamodel(new StreamSource(new ByteArrayInputStream(temp.toByteArray())), dres1, gameUser_.getHashedUserId());
+			frontendTrans.transform(new DOMSource(dres1.getNode()), outputTarget);
 			break;
 		case View:
 		
 			//config.transformAsDatamodel(xmlSource, new DOMResult(doc), gameUser_.getHashedUserId());
-			config.transformAsDatamodel(new StreamSource(new ByteArrayInputStream(temp.toByteArray())), new DOMResult(root), gameUser_.getHashedUserId());
+			config.transformAsDatamodel(new StreamSource(new ByteArrayInputStream(temp.toByteArray())), dres1, gameUser_.getHashedUserId());
 			
-			int i = 0;
-			for(; i < root.getChildNodes().getLength() && root.getChildNodes().item(i).getNodeType() != Node.ELEMENT_NODE; i++) {}
-			
-			if(i >= root.getChildNodes().getLength())
-				frontendTrans.transform(new DOMSource(root), new DOMResult(root2));
-			else
-				frontendTrans.transform(new DOMSource(root.getChildNodes().item(i)), new DOMResult(root2));
+			frontendTrans.transform(new DOMSource(dres1.getNode()), dres2);
 			
 			//log.info("content: " + bos.toString());
 			
-			config.transformFromResource(viewResourceName, new DOMSource(root2), outputTarget, params);
+			config.transformFromResource(viewResourceName, new DOMSource(dres2.getNode()), outputTarget, params);
 			
 			break;
 		}

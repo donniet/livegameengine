@@ -43,7 +43,7 @@ function dateFromString(s) {
 		
 		//console.log("millis calc: " + millis);
 		
-		console.log("parsed: " + m[1] + "-" + (parseInt(m[2]) - 1) + "-" + m[3] + "T" + m[4] + ":" + m[5] + ":" + m[6] + "." + millis);
+		console.log("received: " + s + ", parsed: " + m[1] + "-" + (parseInt(m[2]) - 1) + "-" + m[3] + "T" + m[4] + ":" + m[5] + ":" + m[6] + "." + millis);
 		
 		var d = Date.UTC(
 			parseInt(m[1]), parseInt(m[2])-1, parseInt(m[3]),
@@ -273,7 +273,6 @@ ClientMessageChannel.prototype.onclientmessages = function(messagesXml) {
 		}
 	}, this);
 }
-ClientMessageChannel.prototype.handleClientMessage
 ClientMessageChannel.prototype.onerror = function(errorXml) {
 	//console.log("there was an error, shutting down...");
 	this.close();
@@ -344,6 +343,7 @@ function ViewConstructor() {
 	this.serverLoadTime_ = new Date();
 	this.events_ = new Object();
 	this.handlers_ = new Object();
+	this.handlersDict_ = new Object();
 	this.eventEndpoint_ = null;
 	this.gameEventEndpoint_ = null;
 	this.gameViewNamespace_ = "";
@@ -397,9 +397,12 @@ ViewConstructor.prototype.registerEventHandlers = function(arr) {
 		
 		if(typeof this.handlers_[h.event] == "undefined") {
 			this.handlers_[h.event] = new Array();
+			this.handlersDict_[h.event] = new Object();
 		}
 		
 		this.handlers_[h.event].push(h);
+		if(typeof h.key == "string" && h.key != "")
+			this.handlersDict_[h.event][h.key] = h;
 	}
 }
 ViewConstructor.prototype.handleGameViewElement = function(parent, node) {
@@ -460,6 +463,7 @@ ViewConstructor.prototype.handleGameViewEventHandlerElement = function(parent, n
 	var h = {
 		"mode": node.attributes["mode"] ? node.attributes["mode"].nodeValue : "",
 		"event": node.attributes["event"] ? node.attributes["event"].nodeValue : "",
+		"key": node.attributes["key"] ? node.attributes["key"].nodeValue : "",
 		"condition": node.attributes["condition"] ? node.attributes["condition"].nodeValue : "",
 		"content": parent,
 		"attributes": new Array()
@@ -550,71 +554,100 @@ ViewConstructor.prototype.handleClientMessage = function(clientMessage) {
 	
 	console.log("clientMessage event: " + clientMessage.event);
 	
-	var handlers = this.handlers_[clientMessage.event];
-	
-	console.log("handler: " + (handlers ? handlers.toString() : "null"));
-	
-	if(handlers && handlers.length > 0) {
-		for(var i = 0; i < handlers.length; i++) {
-			var h = handlers[i];
-			console.log("checking handler number: " + i + ": " + h.condition);
-			
-			if(h.condition != "") {
-				console.log("condition: " + h.condition);
-				var r = false;
-				with(clientMessage) {
-					try {
-						r = eval(h.condition);
+	if(typeof clientMessage.params["key"] == "string" && clientMessage.params["key"] != "") {
+		var key = clientMessage.params["key"];
+		
+		console.log("clientMessage key: " + key);
+		
+		var handlersDict = this.handlersDict_[clientMessage.event];
+		if(handlersDict && typeof handlersDict[key] == "object") {
+			var h = handlersDict[key];
+
+			if(h.content) {	
+				if(h.mode == "attribute") {
+					for(var j = 0; j < h.attributes.length; j++) {
+						var a = h.attributes[j];
+						h.content.setAttribute(a.name, a.value);
 					}
-					catch(e) {
-						console.log("condition error: " + e);
-						r = false;
+				}
+				else {
+					if(h.mode == "replace") {
+						emptyNode(h.content);
+					}
+					for(var j = 0; j < clientMessage.content.childNodes.length; j++) {
+						this.parseMessageResponse(h.content, clientMessage.content.childNodes[j]);
+					}
+				}
+			}
+		}
+	}
+	else {
+		var handlers = this.handlers_[clientMessage.event];
+		
+		console.log("handler: " + (handlers ? handlers.toString() : "null"));
+			
+		if(handlers && handlers.length > 0) {
+			for(var i = 0; i < handlers.length; i++) {
+				var h = handlers[i];
+				console.log("checking handler number: " + i + ": " + h.condition);
+				
+				if(h.condition != "") {
+					console.log("condition: " + h.condition);
+					var r = false;
+					with(clientMessage) {
+						try {
+							r = eval(h.condition);
+						}
+						catch(e) {
+							console.log("condition error: " + e);
+							r = false;
+						}
+					}
+					
+					if(typeof r == "undefined" || r == null) {
+						continue;
+					}
+					else if(r instanceof XPathResult) {
+						console.log("xpath result: " + r.resultType + ", " + r.booleanValue);
+						
+						
+						if(r.resultType == XPathResult.BOOLEAN_TYPE) {
+							if(!r.booleanValue) continue;
+						}
+						else if(r.resultType == XPathResult.NUMBER_TYPE) {
+							if(r.numberValue == 0) continue;
+						}
+						else if(r.resultType == XPathResult.STRING_TYPE) {
+							if(r.stringValue == null || r.stringValue == "") continue;
+						}
+						else {
+							//TODO: handle the node set types
+							console.log("resultType: " + r.resultType);
+							if(!r) continue;
+						}
+					}
+					else if(!r) {
+						continue;
 					}
 				}
 				
-				if(typeof r == "undefined" || r == null) {
-					continue;
-				}
-				else if(r instanceof XPathResult) {
-					console.log("xpath result: " + r.resultType + ", " + r.booleanValue);
-					
-					
-					if(r.resultType == XPathResult.BOOLEAN_TYPE) {
-						if(!r.booleanValue) continue;
-					}
-					else if(r.resultType == XPathResult.NUMBER_TYPE) {
-						if(r.numberValue == 0) continue;
-					}
-					else if(r.resultType == XPathResult.STRING_TYPE) {
-						if(r.stringValue == null || r.stringValue == "") continue;
-					}
-					else {
-						//TODO: handle the node set types
-						console.log("resultType: " + r.resultType);
-						if(!r) continue;
+				//console.log("found a handler: " + h);
+				
+				if(!h.content) continue;
+				
+				if(h.mode == "attribute") {
+					for(var j = 0; j < h.attributes.length; j++) {
+						var a = h.attributes[j];
+						h.content.setAttribute(a.name, a.value);
 					}
 				}
-				else if(!r) {
-					continue;
-				}
-			}
-			
-			//console.log("found a handler: " + h);
-			
-			if(!h.content) continue;
-			
-			if(h.mode == "attribute") {
-				for(var j = 0; j < h.attributes.length; j++) {
-					var a = h.attributes[j];
-					h.content.setAttribute(a.name, a.value);
-				}
-			}
-			else {
-				if(h.mode == "replace") {
-					emptyNode(h.content);
-				}
-				for(var i = 0; i < clientMessage.content.childNodes.length; i++) {
-					this.parseMessageResponse(h.content, clientMessage.content.childNodes[i]);
+				else {
+					if(h.mode == "replace") {
+						emptyNode(h.content);
+					}
+					for(var j = 0; j < clientMessage.content.childNodes.length; j++) {
+						this.parseMessageResponse(h.content, clientMessage.content.childNodes[j]);
+					}
 				}
 			}
 		}
@@ -694,5 +727,7 @@ ViewConstructor.prototype.handleLoad = function() {
 		});
 		this.channel.open();
 	}
+	
+	Event.fire(this, "windowload", []);
 }
 View = new ViewConstructor();

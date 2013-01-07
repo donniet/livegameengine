@@ -66,6 +66,13 @@ public class Util {
 		case Node.DOCUMENT_TYPE_NODE:
 			writer.writeDTD(n.getNodeValue());
 			break;
+			
+		case Node.DOCUMENT_FRAGMENT_NODE:
+			for(int i = 0; i < n.getChildNodes().getLength(); i++) {
+				Node m = n.getChildNodes().item(i);
+				writeNode(m, writer);
+			}
+			break;
 		case Node.ELEMENT_NODE:
 			
 			if(n.getPrefix() != null && n.getPrefix() != "")
