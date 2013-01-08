@@ -107,22 +107,6 @@
 			function hasDevelopment(obj) {
 				return !!obj && !!obj.development && obj.development.length() > 0;
 			}
-			function adjacentVertexFromVertex(x, y) {
-				var edges1 = state.board.edges.edge.(@x1 == x && @y1 == y);
-				var edges2 = state.board.edges.edge.(@x2 == x && @y2 == y);
-				
-				var ret = <></>;
-				
-				for(var i = 0; i < edges1.length(); i++) {
-					var edge = edges1[i];
-					ret += state.board.verteces.vertex.(@x == edge.@x2 && @y == edge.@y2);
-				}
-				for(var i = 0; i < edges2.length(); i++) {
-					var edge = edges2[i];
-					ret += state.board.verteces.vertex.(@x == edge.@x1 && @y == edge.@y1);
-				}
-				return ret;
-			}
 			function hasAdjacentDevelopment(x, y) {
 				var adjacent = adjacentVertexFromVertex(x, y);
 				
@@ -156,6 +140,35 @@
 				
 				e.appendChild(<development type={pd.@type} color={col} count="1" />);
 				pd.@count -= 1;
+			}
+			function adjacentVertexFromPoly(x, y) {
+				var corners = polyCorners(x, y);
+				
+				var ret = <></>;
+				
+				for(var i = 0; i < corners.length; i++) {
+					var c = corners[i];
+					
+					ret += state.board.verteces.vertex.(@x == c.x && @y == c.y);
+				}
+				
+				return ret;
+			}
+			function adjacentVertexFromVertex(x, y) {
+				var edges1 = state.board.edges.edge.(@x1 == x && @y1 == y);
+				var edges2 = state.board.edges.edge.(@x2 == x && @y2 == y);
+				
+				var ret = <></>;
+				
+				for(var i = 0; i < edges1.length(); i++) {
+					var edge = edges1[i];
+					ret += state.board.verteces.vertex.(@x == edge.@x2 && @y == edge.@y2);
+				}
+				for(var i = 0; i < edges2.length(); i++) {
+					var edge = edges2[i];
+					ret += state.board.verteces.vertex.(@x == edge.@x1 && @y == edge.@y1);
+				}
+				return ret;
 			}
 			function adjacentPolyFromVertex(x, y) {
 				log.info("looking for adjecencies to " + x + ", " + y);
@@ -454,7 +467,7 @@
 				<script><![CDATA[
 					state.board.currentPlayer = (state.board.currentPlayer.text() >>> 0) + 1;
 				]]></script>
-				<game:sendWatcherEvent event="'board.currentPlayerChanged'">					
+				<game:sendWatcherEvent event="'currentPlayerChanged'">					
 					<param name="currentPlayer" expr="state.board.currentPlayer" />
 				</game:sendWatcherEvent>
 			</transition>
@@ -467,7 +480,7 @@
 				<script><![CDATA[
 					state.board.currentPlayer = (state.board.currentPlayer.text() >>> 0) - 1;
 				]]></script>
-				<game:sendWatcherEvent event="'board.currentPlayerChanged'">
+				<game:sendWatcherEvent event="'currentPlayerChanged'">
 					<param name="currentPlayer" expr="state.board.currentPlayer" />
 				</game:sendWatcherEvent>
 			</transition>
@@ -482,7 +495,71 @@
 			</transition>
 		</state>		
 	</state>
-	<state id="main">
-	
+	<state id="main" initial="main.rollDice">
+		<state id="main.rollDice">
+			<transition event="board.diceClick" cond="!isCurrentPlayer(_eventdata.gns::player.text())">
+				<game:error message="You are not the current player." />
+			</transition>
+			<transition event="board.diceClick" target="main.checkDiceRoll">
+				<script><![CDATA[
+					delete state.board.dice;
+					
+					var die0 = Math.floor(Math.random() * 6.0) + 1;
+					var die1 = Math.floor(Math.random() * 6.0) + 1;
+					
+					state.board.appendChild(<dice><die value={die0} /><die value={die1} /></dice>);
+				]]></script>
+				<game:sendWatcherEvent event="'diceRolled'">
+					<content expr="state.board.dice" />
+				</game:sendWatcherEvent>
+			</transition>
+		</state>
+		<state id="main.checkDiceRoll">
+			<transition cond="parseInt(state.board.dice.die[0].@value) + parseInt(state.board.dice.die[1].@value) == 7" target="main.handleRollOf7" />
+			<transition target="main.distributeResources" />			
+		</state>
+		<state id="main.handleRollOf7" initial="main.handleRollOf7.discard">
+			<state id="main.handleRollOf7.discard">
+				<onentry>
+					<script>log.info("TODO: Discarding... ");</script>
+				</onentry>
+				<transition target="main.build" />
+			</state>
+		</state>
+		<state id="main.distributeResources">
+			<onentry>
+				<script><![CDATA[
+					var diceTotal = parseInt(state.board.dice.die[0].@value) + parseInt(state.board.dice.die[1].@value);
+					
+					for each(var poly in state.board.polys.poly.(@value == diceTotal)) {
+						var adjacent = adacentVertexFromPoly(poly.@x, poly.@y);
+						
+						for each(var vert in adacent) {
+							for each(var dev in vert.development) {
+								var resourceType = state.board.polytypes.polytype.(@type == poly.@type).@produces;
+								
+								var pr = state.board.players.player.(color == dev.@color).resources.resource.(@type == resourceType);
+								
+								switch(dev.@type) {
+								case "settlement":
+									pr.@count = parseInt(pr.@count) + 1;
+									break;
+								case "city":
+									pr.@count = parseInt(pr.@count) + 2;
+									break;
+								}
+							}
+						}
+					}
+				]]></script>
+				<game:sendWatcherEvent event="'resourcesDistributed'">
+					<content expr="state.board.players" />
+				</game:sendWatcherEvent>
+			</onentry>
+			<transition target="main.build" />
+		</state>
+		<state id="main.build">
+			
+		</state>
 	</state>
 </scxml>

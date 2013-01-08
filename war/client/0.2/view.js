@@ -43,7 +43,7 @@ function dateFromString(s) {
 		
 		//console.log("millis calc: " + millis);
 		
-		console.log("parsed: " + m[1] + "-" + (parseInt(m[2]) - 1) + "-" + m[3] + "T" + m[4] + ":" + m[5] + ":" + m[6] + "." + millis);
+		console.log("received: " + s + ", parsed: " + m[1] + "-" + (parseInt(m[2]) - 1) + "-" + m[3] + "T" + m[4] + ":" + m[5] + ":" + m[6] + "." + millis);
 		
 		var d = Date.UTC(
 			parseInt(m[1]), parseInt(m[2])-1, parseInt(m[3]),
@@ -393,7 +393,7 @@ ViewConstructor.prototype.registerEventHandlers = function(arr) {
 	for(var i = 0; i < arr.length; i++) {
 		var h = arr[i];
 		
-		console.log("registering handler: " + h.event);
+		//console.log("registering handler: " + h.event);
 		
 		if(typeof this.handlers_[h.event] == "undefined") {
 			this.handlers_[h.event] = new Array();
@@ -444,20 +444,29 @@ ViewConstructor.prototype.handleGameViewEventElement = function(parent, node) {
 		}
 	}
 	
-	var event = node.getAttribute("on");
+	var on = node.getAttribute("on");
+	var event = node.getAttribute("event");
 	
-	console.log("event: " + event + ", content: " + content);
+	//console.log("event: " + on + ", content: " + content);
+	//console.log("parent: " + parent);
 	
 	var e = {
-		"event": event,
+		"on": on,
+		"event": event ? event : on,
 		"gameEvent": node.attributes["gameEvent"] ? node.attributes["gameEvent"].nodeValue : "",
 		"payload": content,
 		"params": params
 	};
-
+	/*
+	var self = this;
+	parent["on" + on] = function() {
+		self.trigger(parent, e);
+	}
+	*/
 	Event.addListener(parent, event, function() {
 		this.trigger(parent, e);
 	}, this);
+	
 }
 ViewConstructor.prototype.handleGameViewEventHandlerElement = function(parent, node) {
 	var h = {
@@ -676,6 +685,8 @@ ViewConstructor.prototype.trigger = function(el, e) {
 		//console.log("unknown event id: '" + eventid + "'");
 		return;
 	}
+	
+	console.log("triggering event: " + e.event);
 	
 	var url = "";
 	var method = "POST";

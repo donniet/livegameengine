@@ -393,7 +393,7 @@ ViewConstructor.prototype.registerEventHandlers = function(arr) {
 	for(var i = 0; i < arr.length; i++) {
 		var h = arr[i];
 		
-		console.log("registering handler: " + h.event);
+		//console.log("registering handler: " + h.event);
 		
 		if(typeof this.handlers_[h.event] == "undefined") {
 			this.handlers_[h.event] = new Array();
@@ -444,20 +444,29 @@ ViewConstructor.prototype.handleGameViewEventElement = function(parent, node) {
 		}
 	}
 	
-	var event = node.getAttribute("on");
+	var on = node.getAttribute("on");
+	var event = node.getAttribute("event");
 	
-	console.log("event: " + event + ", content: " + content);
+	//console.log("event: " + on + ", content: " + content);
+	//console.log("parent: " + parent);
 	
 	var e = {
-		"event": event,
+		"on": on,
+		"event": event ? event : on,
 		"gameEvent": node.attributes["gameEvent"] ? node.attributes["gameEvent"].nodeValue : "",
 		"payload": content,
 		"params": params
 	};
-
+	/*
+	var self = this;
+	parent["on" + on] = function() {
+		self.trigger(parent, e);
+	}
+	*/
 	Event.addListener(parent, event, function() {
 		this.trigger(parent, e);
 	}, this);
+	
 }
 ViewConstructor.prototype.handleGameViewEventHandlerElement = function(parent, node) {
 	var h = {
@@ -676,6 +685,8 @@ ViewConstructor.prototype.trigger = function(el, e) {
 		//console.log("unknown event id: '" + eventid + "'");
 		return;
 	}
+	
+	console.log("triggering event: " + e.event);
 	
 	var url = "";
 	var method = "POST";

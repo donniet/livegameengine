@@ -200,164 +200,7 @@
 			<head>
 				<title>Pilgrims of Natac</title>
 				<style type="text/css">
-					@font-face {
-						font-family: "Fanwood";
-						src: url("/client/0.2/fonts/Fanwood.otf");
-					}
-				
-					.hex {
-						fill:#F5F5FF;
-						stroke: #CCCCCC;
-						stroke-width:0.5;
-					}
-					.hex-inner {
-						fill: rgba(255,0,0,0.1);
-						stroke: #FF0000;
-						stroke-width: 1px;
-					}
-					.hex-hitarea {
-						fill:#00FF00;
-						opacity:0;
-					}
-					.hex-hitarea:hover {
-						opacity:0.5;
-					}
-					.hexlabel-back {
-						fill:#F5F5FF;
-						stroke:#CCCCCC;
-					}
-					.hexlabel {
-						font-family:"Fanwood", serif;
-						font-size:26px;
-						stroke:#000000;
-						fill:#000000;
-						dominant-baseline:central;
-						text-anchor:middle;
-					}
-					.edge {
-					    fill:rgb(0,255,0);
-					    opacity:0;
-					    stroke:rgb(0,255,0);
-					    stroke-width:1;
-					}
-					.edge:hover {
-					    opacity:0.5;
-					}
-					.vertex {
-					    fill:rgb(0,255,0);
-					    opacity:0;
-					    stroke:#00ff00;
-					    stroke-width:1;
-					}
-					.vertex:hover {
-					    opacity:0.5;
-					}
-					.labelemph {
-						stroke:#FF0000;
-						fill:#FF0000;
-					}
-					.Fields {
-					    fill:#FFEF4F;
-					    stroke:#DDCD2D;
-					    stroke-width:1;
-					}
-					.Forest {
-					    fill:#00932C;
-					    stroke:#00710A;
-					    stroke-width:1;
-					}
-					.Pasture {
-					    fill:#BFE882;
-					    stroke:#9DC770;
-					    stroke-width:1;
-					}
-					.Hills {
-					    fill:#B22222;
-					    stroke:#900000;
-					    stroke-width:1;
-					}
-					.Mountains {
-					    fill:#787887;
-					    stroke:#565665;
-					    stroke-width:1;
-					}
-					.Desert {
-					    fill:#fafad2;
-					    stroke:#D8D8B0;
-					    stroke-width:1;
-					}
-					
-					.port-anchor {
-						stroke: #000000;
-						stroke-dasharray: 3,2;
-						stroke-width: 2px;
-						fill: none;
-					}
-					.port-marker circle {
-						stroke: #000000;
-						stroke-dasharray:none;
-						stroke-width: 2px;
-						fill:none;
-					}
-					.port-marker text {
-						font-family:"Fanwood", serif;
-						font-size:20px;
-						stroke:#000000;
-						fill:#000000;
-						dominant-baseline:central;
-						text-anchor:middle;
-					}
-					.port-marker line {
-						stroke: #000000;
-						stroke-width: 2px;
-						/*marker-end:url(#Triangle);*/
-					}
-					
-					
-					.port-Wool circle {
-					    fill: #BFE882;
-					}
-					
-					.port-Wheat circle, .port-Grain circle {
-					    fill: #FFEF4F;
-					}
-					
-					.port-Wood circle {
-					    fill: #00932C;
-					}
-					
-					.port-Ore circle {
-					    fill: #787887;
-					}
-					
-					.port-Brick circle {
-					    fill: firebrick;
-					}
-					.port-any circle {
-						fill: white;
-					}
-					
-					.red {
-						fill: rgb(255,0,0);
-						stroke: black;
-						stroke-width: 1px;
-					}
-					.green {
-						fill: green;
-						stroke: black;
-						stroke-width: 1px;
-					}
-					
-					#boardDiv {
-						width:100%;
-						height:100%;
-						position:absolute;
-						top:0;
-						left:0;	
-					}
-					body {
-						overflow:hidden;
-					}
+					<xsl:call-template name="styles" />
 				</style>
 				<script type="text/javascript"><![CDATA[
 					var boardZoom = 0;
@@ -400,7 +243,25 @@
 				<input value="Start" type="button">
 					<view:event gameEvent="start" on="click" />
 				</input>
+				<input value="Roll" type="button">
+					<view:event on="click" event="diceClick" />
+				</input>
 				
+				<div id="diceDiv">
+					
+					<xsl:choose>
+						<xsl:when test="count(pil:dice) = 0">
+							<img src="/client/0.2/i/Dice-6.svg" width="50" height="50" />
+							<img src="/client/0.2/i/Dice-6.svg" width="50" height="50" />
+						</xsl:when>
+						<xsl:otherwise>
+							<xsl:apply-templates select="pil:dice" />
+						</xsl:otherwise>
+					</xsl:choose>
+					
+					<view:eventHandler event="board.diceRolled" mode="replace" />
+				</div>
+								
 				<div id="boardDiv">
 					<svg:svg id="boardSvg" width="100%" height="100%" baseProfile="full" version="1.1">
 						<xsl:call-template name="board" />
@@ -410,6 +271,16 @@
 				</div>
 			</body>
 		</html>
+	</xsl:template>
+	
+	<xsl:template match="pil:dice">
+		<xsl:for-each select="pil:die">
+			<img src="/client/0.2/i/Dice-{@value}.svg" width="50" height="50" />
+		</xsl:for-each>	
+	</xsl:template>
+	
+	<xsl:template match="/game:message[game:event = 'board.diceRolled']">
+		<xsl:apply-template select="game:content/pil:dice" />
 	</xsl:template>
 	
 	<xsl:template name="board">
@@ -789,6 +660,170 @@
 		</svg:g>
 	</xsl:template>
 	
+	
+	<xsl:template name="styles">
+		@font-face {
+			font-family: "Fanwood";
+			src: url("/client/0.2/fonts/Fanwood.otf");
+		}
+	
+		.hex {
+			fill:#F5F5FF;
+			stroke: #CCCCCC;
+			stroke-width:0.5;
+		}
+		.hex-inner {
+			fill: rgba(255,0,0,0.1);
+			stroke: #FF0000;
+			stroke-width: 1px;
+		}
+		.hex-hitarea {
+			fill:#00FF00;
+			opacity:0;
+		}
+		.hex-hitarea:hover {
+			opacity:0.5;
+		}
+		.hexlabel-back {
+			fill:#F5F5FF;
+			stroke:#CCCCCC;
+		}
+		.hexlabel {
+			font-family:"Fanwood", serif;
+			font-size:26px;
+			stroke:#000000;
+			fill:#000000;
+			dominant-baseline:central;
+			text-anchor:middle;
+		}
+		.edge {
+		    fill:rgb(0,255,0);
+		    opacity:0;
+		    stroke:rgb(0,255,0);
+		    stroke-width:1;
+		}
+		.edge:hover {
+		    opacity:0.5;
+		}
+		.vertex {
+		    fill:rgb(0,255,0);
+		    opacity:0;
+		    stroke:#00ff00;
+		    stroke-width:1;
+		}
+		.vertex:hover {
+		    opacity:0.5;
+		}
+		.labelemph {
+			stroke:#FF0000;
+			fill:#FF0000;
+		}
+		.Fields {
+		    fill:#FFEF4F;
+		    stroke:#DDCD2D;
+		    stroke-width:1;
+		}
+		.Forest {
+		    fill:#00932C;
+		    stroke:#00710A;
+		    stroke-width:1;
+		}
+		.Pasture {
+		    fill:#BFE882;
+		    stroke:#9DC770;
+		    stroke-width:1;
+		}
+		.Hills {
+		    fill:#B22222;
+		    stroke:#900000;
+		    stroke-width:1;
+		}
+		.Mountains {
+		    fill:#787887;
+		    stroke:#565665;
+		    stroke-width:1;
+		}
+		.Desert {
+		    fill:#fafad2;
+		    stroke:#D8D8B0;
+		    stroke-width:1;
+		}
+		
+		.port-anchor {
+			stroke: #000000;
+			stroke-dasharray: 3,2;
+			stroke-width: 2px;
+			fill: none;
+		}
+		.port-marker circle {
+			stroke: #000000;
+			stroke-dasharray:none;
+			stroke-width: 2px;
+			fill:none;
+		}
+		.port-marker text {
+			font-family:"Fanwood", serif;
+			font-size:20px;
+			stroke:#000000;
+			fill:#000000;
+			dominant-baseline:central;
+			text-anchor:middle;
+		}
+		.port-marker line {
+			stroke: #000000;
+			stroke-width: 2px;
+			/*marker-end:url(#Triangle);*/
+		}
+		
+		
+		.port-Wool circle {
+		    fill: #BFE882;
+		}
+		
+		.port-Wheat circle, .port-Grain circle {
+		    fill: #FFEF4F;
+		}
+		
+		.port-Wood circle {
+		    fill: #00932C;
+		}
+		
+		.port-Ore circle {
+		    fill: #787887;
+		}
+		
+		.port-Brick circle {
+		    fill: firebrick;
+		}
+		.port-any circle {
+			fill: white;
+		}
+		
+		.red {
+			fill: rgb(255,0,0);
+			stroke: black;
+			stroke-width: 1px;
+		}
+		.green {
+			fill: green;
+			stroke: black;
+			stroke-width: 1px;
+		}
+		
+		#boardDiv {
+			width:100%;
+			height:100%;
+			position:absolute;
+			top:0;
+			left:0;	
+			z-index: -100;
+		}
+		/*
+		body {
+			overflow:hidden;
+		}
+		*/
+	</xsl:template>
 	
 	
 </xsl:stylesheet>
