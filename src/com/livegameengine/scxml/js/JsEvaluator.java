@@ -50,7 +50,7 @@ public class JsEvaluator implements Evaluator, Serializable {
 			});
 		}
 		catch(EcmaError e) {
-			int lineNo = e.lineNumber() - 1;
+			int lineNo = e.lineNumber() - 2;
 			String sep = SecurityUtilities.getSystemProperty("line.separator");
 			int pos = 0;
 			while(lineNo > 0 && pos + sep.length() < expr.length()) {

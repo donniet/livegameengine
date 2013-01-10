@@ -249,7 +249,7 @@ public class GameServlet extends HttpServlet {
 					return;
 				}
 				
-				log.info(String.format("since: %s, parsed: %s", since, config.getDateFormat().format(s)));
+				//log.info(String.format("since: %s, parsed: %s", since, config.getDateFormat().format(s)));
 
 				List<ClientMessage> messages = ClientMessage.findClientMessagesSince(g, s);
 				

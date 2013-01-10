@@ -246,6 +246,9 @@
 				<input value="Roll" type="button">
 					<view:event on="click" event="diceClick" />
 				</input>
+				<input value="End Turn" type="button">
+					<view:event on="click" event="endTurn" />
+				</input>
 				
 				<div id="diceDiv">
 					
@@ -280,7 +283,7 @@
 	</xsl:template>
 	
 	<xsl:template match="/game:message[game:event = 'board.diceRolled']">
-		<xsl:apply-template select="game:content/pil:dice" />
+		<xsl:apply-template select="//pil:dice" />
 	</xsl:template>
 	
 	<xsl:template name="board">
@@ -475,7 +478,7 @@
 	
 		<svg:g>
 			<svg:circle class="vertex" cx="{$x}" cy="{$y}" r="{$edgeLength * $vertexHitProportion}">
-				<view:event on="click" endpointEvent="click">
+				<view:event on="click" event="click">
 					<pil:vertex x="{@x}" y="{@y}" />
 				</view:event>
 			</svg:circle>
@@ -549,7 +552,7 @@
 	
 		<svg:g>
 			<svg:polygon class="edge" points="{$points}">
-				<view:event on="click" endpointEvent="click">
+				<view:event on="click" event="click">
 					<pil:edge x1="{@x1}" y1="{@y1}" x2="{@x2}" y2="{@y2}" />
 				</view:event>
 			</svg:polygon>
@@ -652,7 +655,7 @@
 				
 			</xsl:if>
 			<svg:polygon class="hex-hitarea" points="{$outerpoints}">
-				<view:event on="click" endpointEvent="click">
+				<view:event on="click" event="click">
 					<pil:hex x="{@x}" y="{@y}" />
 				</view:event>
 			</svg:polygon>

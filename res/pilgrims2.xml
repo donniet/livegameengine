@@ -532,9 +532,9 @@
 					var diceTotal = parseInt(state.board.dice.die[0].@value) + parseInt(state.board.dice.die[1].@value);
 					
 					for each(var poly in state.board.polys.poly.(@value == diceTotal)) {
-						var adjacent = adacentVertexFromPoly(poly.@x, poly.@y);
+						var adjacent = adjacentVertexFromPoly(poly.@x, poly.@y);
 						
-						for each(var vert in adacent) {
+						for each(var vert in adjacent) {
 							for each(var dev in vert.development) {
 								var resourceType = state.board.polytypes.polytype.(@type == poly.@type).@produces;
 								
@@ -559,7 +559,16 @@
 			<transition target="main.build" />
 		</state>
 		<state id="main.build">
-			
+			<transition event="board.endTurn" cond="!isCurrentPlayer(_eventdata.gns::player.text())">
+				<game:error message="You are not the current player" />
+			</transition>
+			<transition event="board.endTurn" target="main.rollDice">
+				<script><![CDATA[
+					var currentPlayer = parseInt(state.board.currentPlayer);
+					
+					state.board.currentPlayer = (currentPlayer + 1) % state.board.players.player.length();
+				]]></script>
+			</transition>
 		</state>
 	</state>
 </scxml>

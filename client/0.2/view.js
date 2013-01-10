@@ -37,17 +37,12 @@ function dateFromString(s) {
 	var m = iso8601datepattern.exec(s);
 	
 	if(m) {	
-		//console.log("millis: " + m[7]);
 		
-		var millis = Math.floor(1000.0 * parseFloat(m[7]));
-		
-		//console.log("millis calc: " + millis);
-		
-		console.log("received: " + s + ", parsed: " + m[1] + "-" + (parseInt(m[2]) - 1) + "-" + m[3] + "T" + m[4] + ":" + m[5] + ":" + m[6] + "." + millis);
+		var millis = Math.floor(1000.0 * parseFloat(m[7],10));
 		
 		var d = Date.UTC(
-			parseInt(m[1]), parseInt(m[2])-1, parseInt(m[3]),
-			parseInt(m[4]), parseInt(m[5]), parseInt(m[6]), millis);
+			parseInt(m[1], 10), parseInt(m[2], 10)-1, parseInt(m[3], 10),
+			parseInt(m[4], 10), parseInt(m[5], 10), parseInt(m[6], 10), millis);
 		
 		switch(m[8]) {
 		case "UTC":
@@ -56,7 +51,7 @@ function dateFromString(s) {
 			break;
 		default:
 			var minutes = parseInt(m[11]) * 60 + parseInt(m[12]);
-			
+		
 			if(m[10] == "-") {
 				d -= minutes * 60000;
 			}
@@ -65,8 +60,10 @@ function dateFromString(s) {
 			}
 			break;
 		}
-		
-		return new Date(d);
+
+		var ret = new Date(d);
+
+		return ret;
 	}
 	
 	return null;
@@ -86,7 +83,7 @@ function stringFromDate(date) {
 
 	var yyyy = date.getUTCFullYear();
 	//var MMM  = months[date.getUTCMonth()];
-	var MM  = pad(date.getMonth()+1);
+	var MM  = pad(date.getUTCMonth()+1);
 	var dd   = pad(date.getUTCDate());
 	var hh   = pad(date.getUTCHours());
 	var mm  = pad(date.getUTCMinutes());
@@ -446,14 +443,15 @@ ViewConstructor.prototype.handleGameViewEventElement = function(parent, node) {
 	
 	var on = node.getAttribute("on");
 	var event = node.getAttribute("event");
+	var gameEvent = node.getAttribute("gameEvent");
 	
 	//console.log("event: " + on + ", content: " + content);
-	//console.log("parent: " + parent);
+	//console.log("gameEvent: " + gameEvent);
 	
 	var e = {
 		"on": on,
 		"event": event ? event : on,
-		"gameEvent": node.attributes["gameEvent"] ? node.attributes["gameEvent"].nodeValue : "",
+		"gameEvent": gameEvent ? gameEvent : "",
 		"payload": content,
 		"params": params
 	};
@@ -463,7 +461,9 @@ ViewConstructor.prototype.handleGameViewEventElement = function(parent, node) {
 		self.trigger(parent, e);
 	}
 	*/
-	Event.addListener(parent, event, function() {
+	//parent.setAttribute("class", "added");
+	Event.addListener(parent, on, function() {
+		console.log("event: " + e.event + ", gameEvent: " + e.gameEvent);
 		this.trigger(parent, e);
 	}, this);
 	
@@ -627,7 +627,7 @@ ViewConstructor.prototype.handleClientMessage = function(clientMessage) {
 							if(r.numberValue == 0) continue;
 						}
 						else if(r.resultType == XPathResult.STRING_TYPE) {
-							if(r.stringValue == null || r.stringValue == "") continue;
+							if(r.stringValue == null || r.stringValue == "" || r.stringValue == "false") continue;
 						}
 						else {
 							//TODO: handle the node set types
@@ -731,6 +731,8 @@ ViewConstructor.prototype.handleLoad = function() {
 	//console.log("View loading...");
 	if(this.clientMessageChannelUrl_ != null) {
 		if(this.serverLoadTime_ == null) this.serverLoadTime_ = new Date();
+		
+		console.log("server load time: " + this.serverLoadTime_.toString());
 		
 		this.channel = new ClientMessageChannel(this.clientMessageChannelUrl_, this.serverLoadTime_);
 		Event.addListener(this.channel, "clientmessage", function(clientMessage) {
