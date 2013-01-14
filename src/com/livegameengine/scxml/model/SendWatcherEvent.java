@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.commons.scxml.ErrorReporter;
 import org.apache.commons.scxml.Evaluator;
 import org.apache.commons.scxml.EventDispatcher;
@@ -13,12 +14,16 @@ import org.apache.commons.scxml.SCXMLExpressionException;
 import org.apache.commons.scxml.model.Action;
 import org.apache.commons.scxml.model.ModelException;
 import org.apache.commons.scxml.model.Send;
+import org.mozilla.javascript.Scriptable;
+import org.mozilla.javascript.xmlimpl.XMLLibImpl;
+import org.w3c.dom.Node;
 
 import com.livegameengine.config.Config;
 import com.livegameengine.util.Util;
 
 public class SendWatcherEvent extends Send {
 	private String keyExpr_ = null;
+	private final Log log_ = LogFactory.getLog(SendWatcherEvent.class);
 	
 	public SendWatcherEvent() {
 		super();
@@ -48,8 +53,29 @@ public class SendWatcherEvent extends Send {
 					String event, Map params, Object hints, long delay, Object content,
 					List externalNodes) {
 				params.put("key", finalkey);
+				
+				Object c = null;
+				if(content == null) {
+					c = null;
+				}
+				else if(content instanceof Node) {
+					c = (Node)content;
+				}
+				else if(content instanceof Scriptable){
+					try {
+						c = XMLLibImpl.toDomNode(content);
+					}
+					catch(Exception e) {
+						log_.info("content error: " + e.getMessage());
+						c = content.toString();
+					}				
+				}
+				else {
+					c = content.toString();
+				}
+				
 				evtDispatcher.send(sendId, target, targetType, 
-						event, params, hints, delay, content, 
+						String.format("board.%s", event), params, hints, delay, c, 
 						externalNodes);
 			}
 			public void cancel(String sendId) {

@@ -46,6 +46,7 @@ import com.livegameengine.scxml.model.CompleteGame;
 import com.livegameengine.scxml.model.Error;
 import com.livegameengine.scxml.model.FlagStateAsImportant;
 import com.livegameengine.scxml.model.PlayerJoin;
+import com.livegameengine.scxml.model.SendInternalEvent;
 import com.livegameengine.scxml.model.SendWatcherEvent;
 import com.livegameengine.scxml.model.StartGame;
 import com.livegameengine.scxml.semantics.SCXMLGameSemanticsImpl;
@@ -60,6 +61,7 @@ import org.mozilla.javascript.ScriptableObject;
 import org.mozilla.javascript.Undefined;
 import org.mozilla.javascript.annotations.JSGetter;
 import org.mozilla.javascript.xml.XMLLib;
+import org.mozilla.javascript.xml.XMLObject;
 import org.mozilla.javascript.xmlimpl.XMLLibImpl;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
@@ -220,6 +222,7 @@ public class Game implements Scriptable, EventDispatcher, SCXMLListener, XmlSeri
 		customActions.add(new CustomAction(Config.getInstance().getGameEngineNamespace(), "sendWatcherEvent", SendWatcherEvent.class));
 		customActions.add(new CustomAction(Config.getInstance().getGameEngineNamespace(), "completeGame", CompleteGame.class));
 		customActions.add(new CustomAction(Config.getInstance().getGameEngineNamespace(), "startGame", StartGame.class));
+		customActions.add(new CustomAction(Config.getInstance().getGameEngineNamespace(), "sendInternalEvent", SendInternalEvent.class));
 				
 		scxml = null;
 		try {
@@ -494,7 +497,7 @@ public class Game implements Scriptable, EventDispatcher, SCXMLListener, XmlSeri
 				}
 			}
 			else if(target.equals(Config.getInstance().getWatcherEventTarget())) {
-				event = String.format("board.%s", event);
+				
 				
 				isError_ = false;
 			}
@@ -512,6 +515,20 @@ public class Game implements Scriptable, EventDispatcher, SCXMLListener, XmlSeri
 			}
 			else if(Node.class.isAssignableFrom(content.getClass())) {
 				m = new ClientMessage(this, event, params, (Node)content);
+			}
+			else if(Scriptable.class.isAssignableFrom(content.getClass())){
+				Node c = null;
+				try {
+					c = XMLLibImpl.toDomNode(content);
+				}
+				catch(Exception e) {
+					log_.info("content error: " + e.getMessage());
+				}
+				
+				if(c != null) 
+					m = new ClientMessage(this, event, params, c);
+				else
+					m = new ClientMessage(this, event, params, content.toString());
 			}
 			else {
 				m = new ClientMessage(this, event, params, content.toString());

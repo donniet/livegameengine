@@ -21,6 +21,7 @@ import javax.jdo.annotations.PrimaryKey;
 import javax.xml.bind.annotation.XmlList;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
+import javax.xml.transform.OutputKeys;
 import javax.xml.transform.Transformer;
 import javax.xml.transform.TransformerConfigurationException;
 import javax.xml.transform.TransformerException;
@@ -224,6 +225,8 @@ public class ClientMessage implements Scriptable, XmlSerializable {
 		try {
 			ByteArrayOutputStream bos = new ByteArrayOutputStream();
 			Transformer trans = config_.newTransformer();
+			
+			trans.setOutputProperty(OutputKeys.OMIT_XML_DECLARATION, "yes");
 			
 			trans.transform(new DOMSource(content), new StreamResult(bos));
 			

@@ -3,6 +3,7 @@
 	<name>livegameengine</name>
 	<comment></comment>
 	<projects>
+		<project>scxml</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>

@@ -29,17 +29,52 @@
 		<game:corner x="0" y="1" />
 	</xsl:variable>
 	<xsl:variable name="hexvaluelookup">
-		<pil:h value="2" prob="1" />
-		<pil:h value="3" prob="2" />
-		<pil:h value="4" prob="3" />
-		<pil:h value="5" prob="4" />
-		<pil:h value="6" prob="5" />
-		<pil:h value="7" prob="6" />
-		<pil:h value="8" prob="5" />
-		<pil:h value="9" prob="4" />
-		<pil:h value="10" prob="3" />
-		<pil:h value="11" prob="2" />
-		<pil:h value="12" prob="1" />
+		<pil:h value="2" />
+		
+		<pil:h value="3" />
+		<pil:h value="3" />
+		
+		<pil:h value="4" />
+		<pil:h value="4" />
+		<pil:h value="4" />
+		
+		<pil:h value="5" />
+		<pil:h value="5" />
+		<pil:h value="5" />
+		<pil:h value="5" />
+		
+		<pil:h value="6" />
+		<pil:h value="6" />
+		<pil:h value="6" />
+		<pil:h value="6" />
+		<pil:h value="6" />
+		
+		<pil:h value="7" />
+		<pil:h value="7" />
+		<pil:h value="7" />
+		<pil:h value="7" />
+		<pil:h value="7" />
+		<pil:h value="7" />
+		
+		<pil:h value="8" />
+		<pil:h value="8" />
+		<pil:h value="8" />
+		<pil:h value="8" />
+		<pil:h value="8" />
+		
+		<pil:h value="9" />
+		<pil:h value="9" />
+		<pil:h value="9" />
+		<pil:h value="9" />
+		
+		<pil:h value="10" />
+		<pil:h value="10" />
+		<pil:h value="10" />
+		
+		<pil:h value="11" />
+		<pil:h value="11" />
+		
+		<pil:h value="12" />
 	</xsl:variable>
 	
 	<xsl:variable name="pc" select="ex:node-set($polycorners)" />
@@ -202,37 +237,200 @@
 				<style type="text/css">
 					<xsl:call-template name="styles" />
 				</style>
+				<script type="text/javascript" src="/client/0.2/transform2d.js"></script>
 				<script type="text/javascript"><![CDATA[
-					var boardZoom = 0;
-					var boardScale = 1.0;
+
+function enableBoardPanZoom(board, boardContainer) {
+	var trans = new Transform2d();	
+	
+	var blocker = document.createElement("div");
+	blocker.setAttribute("style", "position:absolute;top:0px;left:0px;height:100%;width:100%;");
+	
+	blocker.addEventListener("mouseup", mouseout, false);
+	blocker.addEventListener("mouseout", mouseout, false);
+	blocker.addEventListener("mousemove", mousemove, false);
+	//blocker.addEventListener("mousedown", mousedown, false);
+	
+	var mousedown_ = false;
+	var pageX_ = 0;
+	var pageY_ = 0;
+	
+	var blockerDiv = null;
+	
+	var mousemove = function(e) {
+		if(mousedown_) {
+			console.log("move(" + e.pageX + "," + e.pageY + ")");
+			move(e.pageX, e.pageY);	
+			
+			e.preventDefault();
+			e.stopPropagation();	
+		}	
+	}
+	var mouseout = function(e) {
+		if(mousedown_) {
+			//console.log("stop(" + e.pageX + "," + e.pageY + ")");
+			move(e.pageX, e.pageY);
+			stopmove();
+			e.preventDefault();
+			e.stopPropagation();
+			
+			mousedown_ = false;
+		}	
+	}
+	var mousedown = function(e) {
+		console.log("mousedown: " + e.which);
+		
+		if(e.which == 2) {
+			mousedown_ = true;
+			//console.log("start(" + e.pageX + "," + e.pageY + ")");
+			startmove(e.pageX, e.pageY);
+			
+			e.preventDefault();
+			e.stopPropagation();
+			e.cancelBubble = false;
+			return false;
+		}	
+	}
+	
+	var stopmove = function() {
+		document.body.removeChild(blocker);
+	}
+	var startmove = function(pageX, pageY) {
+		document.body.appendChild(blocker);
+		
+		pageX_ = pageX;
+		pageY_ = pageY;
+	}
+	var move = function(pageX, pageY) {
+		//$(".chat-window").append("<p>px,py " + pageX + "," + pageY + "</p>");
+		//$(".chat-window").append("<p>epx,epy " + e.pageX + "," + e.pageY + "</p>");
+		
+		var x = pageX - pageX_;
+		var y = pageY - pageY_;
+		
+
+		//var vec = trans.transformFrom([x,y]);
+		
+		trans.translate(x,y);
+		
+		//console.log("transform: " + trans.toSVG());
+		board.setAttribute("transform", trans.toSVG());
 					
-					function handleMouseWheel(e) {
-						console.log("mousewheel: " + e.detail);
-						var boardSvg = document.getElementById("boardSvg");
+		
+		pageX_ = pageX;
+		pageY_ = pageY;
+	}
+	
+	
+	var zoom = function(scale, pageX, pageY) {
+		var x = pageX - board.parentNode.parentNode.clientLeft;
+		var y = pageY - board.parentNode.parentNode.clientTop;
 					
-						var delta = 0;
-						if(e.detail) {
-							delta = -e.detail/3;
-						}
-						
-						if(delta != 0) {
-							boardZoom += delta;
-							boardScale = Math.pow(1.2, boardZoom);
-							boardSvg.setAttribute("transform", "scale(" + boardScale + "," + boardScale + ")");
-						}
-						
-						if (typeof e.preventDefault == "function")
-						    e.preventDefault();
-						    
-						e.returnValue = false;
-					}
-				
-					Event.addListener(View, "windowload", function() {
-						if (window.addEventListener)
-					        window.addEventListener('DOMMouseScroll', handleMouseWheel, false);
-					        
-						window.onmousewheel = handleMouseWheel;
-					});
+		
+		trans.translate(-x, -y).scale(scale).translate(x,y);
+		
+		/*
+		
+		$(".chat-window").append("<p>pos " + pos.left + "," + pos.top + "</p>");
+		$(".chat-window").append("<p>e " + e.pageX + "," + e.pageY + "</p>");
+		$(".chat-window").append("<p>x,y " + x + "," + y + "</p>");
+		$(".chat-window").append("<p>dx,dy " + dx + "," + dy + "</p>");
+		$(".chat-window").append("<p>x0,y0 " + vec0[0] + "," + vec0[1] + "</p>");
+		
+		var vec0 = trans.transformFrom([0,0]);
+		var vec1 = trans.transformFrom([x,y]);
+		
+		var dx = vec1[0] - vec0[0];
+		var dy = vec1[1] - vec0[1];
+		
+		var vec2 = trans.transformFrom([dx, dy]);
+		
+		trans.translate(vec2[0],vec2[1]);
+		*/
+		
+		board.setAttribute("transform", trans.toSVG());
+	}
+
+	var mousewheel = function(e) {
+		var delta = 0;
+		if(e.detail) {
+			delta = -e.detail/3;
+		}
+		
+		if(delta != 0) {
+			var scale = Math.pow(1.1, delta);
+			
+			zoom(scale, e.pageX, e.pageY);
+		}
+		
+		if (e.preventDefault)
+	        e.preventDefault();
+		e.returnValue = false;
+	}
+	
+	var touchstart = function(e) {
+		e.preventDefault();
+		if(e.touches.length == 1) {
+			startmove(e.touches[0].pageX, e.touches[0].pageY);
+		}
+	}
+	var touchmove = function(e) {
+		e.preventDefault();
+		if(e.touches.length == 1) {
+			move(e.touches[0].pageX, e.touches[0].pageY);
+		}
+		
+	}
+	var touchend = function(e) {
+		e.preventDefault();
+		if(e.touches.length == 1) {
+			move(e.touches[0].pageX, e.touches[0].pageY);
+			stopmove();
+		}
+		
+	}
+	var touchcancel = function(e) {
+		
+	}
+	
+	var moztouchstart = function(e) {
+		e.preventDefault();
+		startmove(e.pageX, e.pageY);
+	}
+	var moztouchmove = function(e) {
+		e.preventDefault();
+		move(e.pageX, e.pageY);
+	}
+	var moztouchend = function(e) {
+		e.preventDefault();
+		move(e.pageX, e.pageY);
+		stopmove();
+	}
+	
+    if(window.addEventListener) 
+    	window.addEventListener('DOMMouseScroll', mousewheel, false);
+    
+    if(document.addEventListener) {
+    	document.addEventListener('touchstart', touchstart, false);
+    	document.addEventListener('touchmove', touchmove, false);
+    	document.addEventListener('touchend', touchend, false);
+    	document.addEventListener('touchcancel', touchcancel, false);
+    	
+    	document.addEventListener('MozTouchDown', moztouchstart, false);
+    	document.addEventListener('MozTouchMove', moztouchmove, false);
+    	document.addEventListener('MozTouchUp', moztouchend, false);
+    	
+    	document.addEventListener('mousedown', mousedown, false);
+    	document.addEventListener('mouseup', mouseout, false);
+    	//document.addEventListener('mouseout', mouseout, false);
+    	document.addEventListener('mousemove', mousemove, false);
+    	document.addEventListener('click', function(e) {
+    		console.log("document onclick");
+    		if(e.which == 2) e.preventDefault();
+    	}, false);
+    }
+}
+					
 				]]></script>
 			</head>
 			
@@ -250,12 +448,18 @@
 					<view:event on="click" event="endTurn" />
 				</input>
 				
+				<span>
+					<view:errorDisplay />
+				</span>
+				
 				<div id="diceDiv">
 					
 					<xsl:choose>
 						<xsl:when test="count(pil:dice) = 0">
-							<img src="/client/0.2/i/Dice-6.svg" width="50" height="50" />
-							<img src="/client/0.2/i/Dice-6.svg" width="50" height="50" />
+							<div>
+								<img src="/client/0.2/i/Dice-6.svg" width="50" height="50" />
+								<img src="/client/0.2/i/Dice-6.svg" width="50" height="50" />
+							</div>
 						</xsl:when>
 						<xsl:otherwise>
 							<xsl:apply-templates select="pil:dice" />
@@ -263,6 +467,12 @@
 					</xsl:choose>
 					
 					<view:eventHandler event="board.diceRolled" mode="replace" />
+				</div>
+				
+				<div id="playersDiv">
+					<xsl:apply-templates select="$meta-doc//game:players" />
+					
+					<view:eventHandler event="game.playerJoin" mode="replace" />
 				</div>
 								
 				<div id="boardDiv">
@@ -276,22 +486,44 @@
 		</html>
 	</xsl:template>
 	
+	<xsl:template match="game:players">
+		<ul>
+			<xsl:apply-templates select="game:player" />
+		</ul>
+	</xsl:template>
+	
+	<xsl:template match="game:player">
+		<li><span><xsl:value-of select="game:role" /></span></li>
+	</xsl:template>
+	
+	<xsl:template match="/game:message[game:event = 'game.playerJoin']">
+		<xsl:apply-templates select="$meta-doc//game:players" />
+	</xsl:template>
+	
 	<xsl:template match="pil:dice">
-		<xsl:for-each select="pil:die">
-			<img src="/client/0.2/i/Dice-{@value}.svg" width="50" height="50" />
-		</xsl:for-each>	
+		<div>
+			<xsl:for-each select="pil:die">
+				<img src="/client/0.2/i/Dice-{@value}.svg" width="50" height="50" />
+			</xsl:for-each>
+		</div>	
 	</xsl:template>
 	
 	<xsl:template match="/game:message[game:event = 'board.diceRolled']">
-		<xsl:apply-template select="//pil:dice" />
+		<xsl:apply-templates select="game:content/pil:dice" />
 	</xsl:template>
 	
+		
 	<xsl:template name="board">
 		<svg:g id="board">
 			<xsl:apply-templates select="pil:polys" />
 			<xsl:apply-templates select="pil:edges" />
 			<xsl:apply-templates select="pil:ports" />
 			<xsl:apply-templates select="pil:verteces" />
+			<script type="text/javascript">			
+				setTimeout(function() {
+					enableBoardPanZoom(document.getElementById("board"), document.getElementById("boardDiv"));
+				}, 100);
+			</script>
 		</svg:g>
 	</xsl:template>
 	
@@ -301,6 +533,11 @@
 			<xsl:apply-templates select="$meta-doc/game:game/game:mostRecentState//scxml:data[@name='state']/pil:board/pil:edges" />
 			<xsl:apply-templates select="$meta-doc/game:game/game:mostRecentState//scxml:data[@name='state']/pil:board/pil:ports" />
 			<xsl:apply-templates select="$meta-doc/game:game/game:mostRecentState//scxml:data[@name='state']/pil:board/pil:verteces" />
+			<script type="text/javascript">			
+				setTimeout(function() {
+					enableBoardPanZoom(document.getElementById("board"), document.getElementById("boardDiv"));
+				}, 100);
+			</script>
 		</svg:g>
 	</xsl:template>
 	
@@ -475,21 +712,19 @@
 				<xsl:with-param name="ny" select="@y" />
 			</xsl:call-template>
 		</xsl:variable>
-	
-		<svg:g>
-			<svg:circle class="vertex" cx="{$x}" cy="{$y}" r="{$edgeLength * $vertexHitProportion}">
-				<view:event on="click" event="click">
-					<pil:vertex x="{@x}" y="{@y}" />
-				</view:event>
-			</svg:circle>
-		</svg:g>
-		
+			
 		<svg:g class="development-container">
 			<xsl:apply-templates select="pil:development" />
 			
 			<view:eventHandler event="board.placeVertexDevelopment" mode="replace" key="{@x},{@y}" />
-			
-			<!-- condition="parseInt(params['x']) == {@x} &amp;&amp; parseInt(params['y']) == {@y}" -->
+		</svg:g>
+		
+		<svg:g>
+			<svg:circle class="vertex" cx="{$x}" cy="{$y}" r="{$edgeLength * $vertexHitProportion}">
+				<view:event on="click" event="vertexClick">
+					<pil:vertex x="{@x}" y="{@y}" />
+				</view:event>
+			</svg:circle>
 		</svg:g>
 	</xsl:template>
 	
@@ -550,20 +785,19 @@
 			</xsl:call-template>
 		</xsl:variable>
 	
-		<svg:g>
-			<svg:polygon class="edge" points="{$points}">
-				<view:event on="click" event="click">
-					<pil:edge x1="{@x1}" y1="{@y1}" x2="{@x2}" y2="{@y2}" />
-				</view:event>
-			</svg:polygon>
-		</svg:g>
 		
 		<svg:g class="development-container">
 			<xsl:apply-templates select="pil:development" />
 			
 			<view:eventHandler event="board.placeEdgeDevelopment" mode="replace" key="{@x1},{@y1},{@x2},{@y2}" />
-			
-				<!-- condition="parseInt(params['x1']) == {@x1} &amp;&amp; parseInt(params['y1']) == {@y1} &amp;&amp; parseInt(params['x2']) == {@x2} &amp;&amp; parseInt(params['y2']) == {@y2}" -->
+		</svg:g>
+		
+		<svg:g>
+			<svg:polygon class="edge" points="{$points}">
+				<view:event on="click" event="edgeClick">
+					<pil:edge x1="{@x1}" y1="{@y1}" x2="{@x2}" y2="{@y2}" />
+				</view:event>
+			</svg:polygon>
 		</svg:g>
 	</xsl:template>
 	
@@ -641,7 +875,7 @@
 			<svg:polygon class="hex-inner {@type}" points="{$innerpoints}" />
 			<xsl:if test="string-length(@value) &gt; 0">
 				<svg:circle class="hexlabel-back" cx="{$mx}" cy="{$my}" r="{$polyradius * $circleratio}" />
-				<svg:text x="{$mx}" y="{$my}">
+				<svg:text x="{$mx}" y="{$my - 4}">
 					<xsl:choose>
 						<xsl:when test="@value = 6 or @value = 8">
 							<xsl:attribute name="class">hexlabel labelemph</xsl:attribute>
@@ -653,14 +887,39 @@
 					<xsl:value-of select="@value" />
 				</svg:text>
 				
+				<xsl:variable name="value" select="@value" />
+				<!-- transform="translate({$mx},{$my})"   -->
+				<svg:svg viewBox="0 0 100 20" x="{$mx - 0.5 * $polyradius * $circleratio}" y="{$my + 7}" preserveAspectRatio="xMidYMid meet" height="{$polyradius * $circleratio * 0.2}px" width="{$polyradius * $circleratio}px">
+					<xsl:variable name="hcount" select="count(ex:node-set($hexvaluelookup)/pil:h[@value = $value])" />
+					
+					<xsl:variable name="left" select="50 - 20 * $hcount div 2" />
+					
+					<xsl:for-each select="ex:node-set($hexvaluelookup)/pil:h[@value = $value]">
+						<svg:circle class="hit" cx="{$left + 20 * position() - 10}" cy="10" r="8" />
+					</xsl:for-each>
+				</svg:svg>
+				
+				
 			</xsl:if>
 			<svg:polygon class="hex-hitarea" points="{$outerpoints}">
-				<view:event on="click" event="click">
+				<view:event on="click" event="hexClick">
 					<pil:hex x="{@x}" y="{@y}" />
 				</view:event>
 			</svg:polygon>
 			
 		</svg:g>
+	</xsl:template>
+	
+	<xsl:template name="repeat">
+		<xsl:param name="times" select="0" />
+		
+		<xsl:if test="$times &gt; 0">
+			<pil:repeat />
+			
+			<xsl:call-template name="repeat">
+				<xsl:with-param name="times" select="$times - 1" />
+			</xsl:call-template>
+		</xsl:if>
 	</xsl:template>
 	
 	
@@ -693,7 +952,7 @@
 		}
 		.hexlabel {
 			font-family:"Fanwood", serif;
-			font-size:26px;
+			font-size:20px;
 			stroke:#000000;
 			fill:#000000;
 			dominant-baseline:central;
@@ -809,6 +1068,16 @@
 		}
 		.green {
 			fill: green;
+			stroke: black;
+			stroke-width: 1px;
+		}
+		.blue {
+			fill: blue;
+			stroke: black;
+			stroke-width: 1px;
+		}
+		.orange {
+			fill: orange;
 			stroke: black;
 			stroke-width: 1px;
 		}

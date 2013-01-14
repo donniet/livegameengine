@@ -101,6 +101,9 @@
 			function findVertex(x, y) {
 				return state.board.verteces.vertex.(@x==( x >>> 0) && @y== (y >>> 0))[0];
 			}
+			function findVertexDevelopments(x, y) {
+				return state.board.verteces.vertex.(@x==( x >>> 0) && @y== (y >>> 0))[0].development;
+			}
 			function findEdge(x1,y1,x2,y2) {
 				return state.board.edges.edge.(@x1 == _eventdata.edge.@x1 && @y1 == _eventdata.edge.@y1 && @x2 == _eventdata.edge.@x2 && @y2 == _eventdata.edge.@y2)[0];
 			}
@@ -198,9 +201,59 @@
 					var p = adjacentPolys[i];
 					
 					var produces = state.board.polytypes.polytype.(@type == p.@type).@produces;
-					var pr = player.resources.resource.(@type == produces);
+					if(produces.length() > 0) {
+						var pr = player.resources.resource.(@type == produces);
+										
+						pr.@count = parseInt(pr.@count) + 1;
+					}								
+				}
+			}
+			function parseCost(cost) {
+				var re = /\s*([0-9]+)\s+([A-Za-z\_][A-Za-z\_0-9]*)\s*/;
+				
+				var ret = new Array();
+								
+				var costarr = cost.toString().split(",");
+				for(var i = 0; i < costarr.length; i++) {
+					var c = costarr[i];
+					var m = re.exec(c);
+					if(m) {
+						ret.push({"resource": m[2], "amount": parseInt(m[1])});
+					}
+				}
+				
+				return ret;
+			}
+			function checkPlayerResourcesAgainstCost(player, costStr) {
+				var cost = parseCost(costStr);
+				
+				var ret = true;
+				for(var i = 0; ret && i < cost.length; i++) {
+					var c = cost[i];
 					
-					pr.@count = parseInt(pr.@count) + 1;								
+					var resource = player.resources.resource.(@type == c.resource)[0];
+					if(!resource) 
+						ret = false;
+					else
+						ret = (parseInt(resource.@count) >= c.amount);
+				}
+				
+				return ret;
+			}
+			function debitPlayerResourcesByCost(player, costStr) {				
+				var cost = util.parseCost(costStr);
+				
+				for(var i = 0; i < cost.length; i++) {
+					var c = cost[i];
+					
+					var resource = player.resources.resource.(@type == c.resource)[0];
+					
+					if(!resource) {
+						throw "Resource not found: " + c.resource;
+					}
+					else {					
+						resource.@count = parseInt(resource.@count) - c.amount;
+					}
 				}
 			}
 		]]></script>
@@ -394,22 +447,22 @@
 	
 	<state id="placement" initial="placement.buildSettlement">
 		<state id="placement.buildSettlement">
-			<transition event="board.click" cond="!isCurrentPlayer(_eventdata.gns::player.text())">
+			<transition event="board.vertexClick" cond="!isCurrentPlayer(_eventdata.gns::player.text())">
 				<game:error message="You are not the current player." />
 			</transition>
-			<transition event="board.click" cond="_eventdata.vertex.length() == 0">
+			<transition event="board.vertexClick" cond="_eventdata.vertex.length() == 0">
 				<game:error message="You must click on a vertex" />
 			</transition>
-			<transition event="board.click" cond="!findVertex(_eventdata.vertex.@x, _eventdata.vertex.@y)">
+			<transition event="board.vertexClick" cond="!findVertex(_eventdata.vertex.@x, _eventdata.vertex.@y)">
 				<game:error messageExpr="'Vertex (' + _eventdata.vertex.@x + ',' + _eventdata.vertex.@y + ') does not exist'" />
 			</transition>
-			<transition event="board.click" cond="hasDevelopment(findVertex(_eventdata.vertex.@x, _eventdata.vertex.@y))">
+			<transition event="board.vertexClick" cond="hasDevelopment(findVertex(_eventdata.vertex.@x, _eventdata.vertex.@y))">
 				<game:error messageExpr="'Vertex (' + _eventdata.vertex.@x + ',' + _eventdata.vertex.@y + ') already has a development'" />
 			</transition>
-			<transition event="board.click" cond="hasAdjacentDevelopment(_eventdata.vertex.@x, _eventdata.vertex.@y)">
+			<transition event="board.vertexClick" cond="hasAdjacentDevelopment(_eventdata.vertex.@x, _eventdata.vertex.@y)">
 				<game:error messageExpr="'Vertex (' + _eventdata.vertex.@x + ',' + _eventdata.vertex.@y + ') has an adjacent development'" />
 			</transition>
-			<transition event="board.click" target="placement.buildRoad">
+			<transition event="board.vertexClick" target="placement.buildRoad">
 				<script><![CDATA[
 					var player = state.board.players.player[state.board.currentPlayer];
 					
@@ -429,22 +482,22 @@
 			</transition>
 		</state>
 		<state id="placement.buildRoad">
-			<transition event="board.click" cond="!isCurrentPlayer(_eventdata.gns::player.text())">
+			<transition event="board.edgeClick" cond="!isCurrentPlayer(_eventdata.gns::player.text())">
 				<game:error message="You are not the current player." />
 			</transition>
-			<transition event="board.click" cond="_eventdata.edge.length() == 0">
+			<transition event="board.edgeClick" cond="_eventdata.edge.length() == 0">
 				<game:error message="You must click on a edge" />
 			</transition>
-			<transition event="board.click" cond="!findEdge(_eventdata.edge.@x1, _eventdata.edge.@y1, _eventdata.edge.@x2, _eventdata.edge.@y2)">
+			<transition event="board.edgeClick" cond="!findEdge(_eventdata.edge.@x1, _eventdata.edge.@y1, _eventdata.edge.@x2, _eventdata.edge.@y2)">
 				<game:error messageExpr="'Edge (' + _eventdata.edge.@x1 + ',' + _eventdata.edge.@y1 + ',' + _eventdata.edge.@x2 + ',' + _eventdata.edge.@y2 + ') does not exist'" />
 			</transition>
-			<transition event="board.click" cond="hasDevelopment(findEdge(_eventdata.edge.@x1, _eventdata.edge.@y1, _eventdata.edge.@x2, _eventdata.edge.@y2))">
+			<transition event="board.edgeClick" cond="hasDevelopment(findEdge(_eventdata.edge.@x1, _eventdata.edge.@y1, _eventdata.edge.@x2, _eventdata.edge.@y2))">
 				<game:error messageExpr="'Edge (' + _eventdata.edge.@x1 + ',' + _eventdata.edge.@y1 + ',' + _eventdata.edge.@x2 + ',' + _eventdata.edge.@y2 + ') already has a road'" />
 			</transition>			
-			<transition event="board.click" cond="(_eventdata.edge.@x1 != state.board.currentVertex.@x || _eventdata.edge.@y1 != state.board.currentVertex.@y) &amp;&amp; (_eventdata.edge.@x2 != state.board.currentVertex.@x || _eventdata.edge.@y2 != state.board.currentVertex.@y)">
+			<transition event="board.edgeClick" cond="(_eventdata.edge.@x1 != state.board.currentVertex.@x || _eventdata.edge.@y1 != state.board.currentVertex.@y) &amp;&amp; (_eventdata.edge.@x2 != state.board.currentVertex.@x || _eventdata.edge.@y2 != state.board.currentVertex.@y)">
 				<game:error message="This edge is not adjecent to the placed settlement." />
 			</transition>
-			<transition event="board.click" target="placement.nextPlayerOrPhase">
+			<transition event="board.edgeClick" target="placement.nextPlayerOrPhase">
 				<script><![CDATA[
 					delete state.board.currentVertex;
 					var player = state.board.players.player[state.board.currentPlayer];
@@ -510,7 +563,7 @@
 					state.board.appendChild(<dice><die value={die0} /><die value={die1} /></dice>);
 				]]></script>
 				<game:sendWatcherEvent event="'diceRolled'">
-					<content expr="state.board.dice" />
+					<content expr="state.board.dice[0]" />
 				</game:sendWatcherEvent>
 			</transition>
 		</state>
@@ -531,21 +584,36 @@
 				<script><![CDATA[
 					var diceTotal = parseInt(state.board.dice.die[0].@value) + parseInt(state.board.dice.die[1].@value);
 					
+					log.info("dice total: " + diceTotal);
+					
 					for each(var poly in state.board.polys.poly.(@value == diceTotal)) {
 						var adjacent = adjacentVertexFromPoly(poly.@x, poly.@y);
 						
+						log.info("adjacent verteces: " + adjacent.length());
+						
 						for each(var vert in adjacent) {
 							for each(var dev in vert.development) {
+								log.info("found development: " + dev.@color + " " + dev.@type);
+								
 								var resourceType = state.board.polytypes.polytype.(@type == poly.@type).@produces;
 								
-								var pr = state.board.players.player.(color == dev.@color).resources.resource.(@type == resourceType);
+								log.info("resource type: " + resourceType);
 								
-								switch(dev.@type) {
+								log.info("player: " + state.board.players.player.(color.text() == dev.@color).toXMLString());
+								
+								var pr = state.board.players.player.(color.text() == dev.@color).resources.resource.(@type == resourceType)[0];
+								
+								log.info("pr: " + pr.toXMLString());
+																
+								switch(dev.@type.toString()) {
 								case "settlement":
 									pr.@count = parseInt(pr.@count) + 1;
 									break;
 								case "city":
 									pr.@count = parseInt(pr.@count) + 2;
+									break;
+								default:
+									log.info("dev.@type: " + dev.@type + " not settlement or city");
 									break;
 								}
 							}
@@ -553,12 +621,80 @@
 					}
 				]]></script>
 				<game:sendWatcherEvent event="'resourcesDistributed'">
-					<content expr="state.board.players" />
+					<content expr="state.board.players[0]" />
 				</game:sendWatcherEvent>
 			</onentry>
 			<transition target="main.build" />
 		</state>
 		<state id="main.build">
+			<transition event="board.vertexClick" cond="!isCurrentPlayer(_eventdata.gns::player.text())">
+				<game:error message="You are not the current player" />
+			</transition>
+			<transition event="board.vertexClick" cond="!findVertex(_eventdata.vertex.@x, _eventdata.vertex.@y)">
+				<game:error messageExpr="'Vertex (' + _eventdata.vertex.@x + ',' + _eventdata.vertex.@y + ') does not exist'" />
+			</transition>
+			<transition event="board.vertexClick" cond="findVertexDevelopments(_eventdata.vertex.@x, _eventdata.vertex.@y).length() &gt; 0">
+				<game:sendInternalEvent event="'developmentSelected'">
+					<param name="player" expr="state.board.players.player[state.board.currentPlayer]" />
+					<param name="vertex" expr="findVertex(_eventdata.vertex.@x, _eventdata.vertex.@y)" />
+					<param name="development" expr="findVertexDevelopments(_eventdata.vertex.@x, _eventdata.vertex.@y)[0]" />
+					<param name="origin" expr="_eventdata" />
+				</game:sendInternalEvent>
+			</transition>
+			<transition event="board.vertexClick">
+				<game:sendInternalEvent event="'placeSettlement'">
+					<param name="player" expr="state.board.players.player[state.board.currentPlayer]" />
+					<param name="vertex" expr="findVertex(_eventdata.vertex.@x, _eventdata.vertex.@y)" />
+					<param name="origin" expr="_eventdata" />
+				</game:sendInternalEvent>
+			</transition>
+			
+			<transition event="board.placeSettlement" cond="hasAdjacentDevelopment(_eventdata.vertex.@x, _eventdata.vertex.@y)">
+				<game:error messageExpr="'Vertex (' + _eventdata.vertex.@x + ',' + _eventdata.vertex.@y + ') has an adjacent development'" />	
+			</transition>
+			<transition event="board.placeSettlement" cond="!checkPlayerResourcesAgainstCost(_eventdata.player, state.board.developments.development.(@type == 'settlement').@cost)">
+				<game:error message="You do not have enough resources to build a settlement" />
+			</transition>
+			<transition event="board.placeSettlement">
+				<script><![CDATA[
+					log.info("placing settlement: " + _eventdata.toXMLString());
+					debitPlayerResourcesByCost(_eventdata.player, state.board.developments.development.(@type == 'settlement').@cost);
+					placeVertexDevelopment("settlement", _eventdata.player.color, _eventdata.vertex.@x, _eventdata.vertex.@y);
+				]]></script>
+				<game:sendWatcherEvent event="'placeVertexDevelopment'">
+					<param name="color" expr="_eventdata.player.color.text()" />
+					<param name="x" expr="_eventdata.vertex.@x >>> 0" />
+					<param name="y" expr="_eventdata.vertex.@y >>> 0" />
+					<param name="type" expr="'settlement'" />
+					<content expr="_eventdata.player" />
+				</game:sendWatcherEvent>
+			</transition>
+			
+			<transition event="board.developmentSelected" cond="_eventdata.development.@color != _eventdata.player.color">
+				<game:error message="This is not your development" />
+			</transition>
+			<transition event="board.developmentSelected" cond="_eventdata.development.@type != 'settlement'">
+				<game:error message="This development is not a settlement and cannot be upgraded" />
+			</transition>
+			<transition event="board.developmentSelected" cond="!checkPlayerResourcesAgainstCost(_eventdata.player, state.board.developments.development.(@type == 'city').@cost)">
+				<game:error message="You do not have enough resources to upgrade this settlement to a city" />
+			</transition>
+			<transition event="board.developmentSelected" target="main.build">
+				<script>//<![CDATA[
+					debitPlayerResourcesByCost(_eventdata.player, state.board.developments.development.(@type == 'city').@cost);
+					delete _eventdata.vertex.development
+					placeVertexDevelopment("city", _eventdata.player.color,  _eventdata.vertex.@x, _eventdata.vertex.@y);
+				//]]></script>
+				<game:flagStateAsImportant important="true" />
+				<game:sendWatcherEvent event="'placeVertexDevelopment'">							
+					<param name="color" expr="state.board.players.player[state.board.currentPlayer].color.text()" />
+					<param name="x" expr="_eventdata.vertex.@x >>> 0" />
+					<param name="y" expr="_eventdata.vertex.@y >>> 0" />
+					<param name="type" expr="'city'" />
+					<content expr="state.board.players.player[state.board.currentPlayer]" />
+				</game:sendWatcherEvent>
+			</transition>
+			
 			<transition event="board.endTurn" cond="!isCurrentPlayer(_eventdata.gns::player.text())">
 				<game:error message="You are not the current player" />
 			</transition>
