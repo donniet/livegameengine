@@ -144,6 +144,23 @@
 				e.appendChild(<development type={pd.@type} color={col} count="1" />);
 				pd.@count -= 1;
 			}
+			function isValidRoadPlacement(color, x1, y1, x2, y2) {
+				// valid roads must have a settlement, city or road adjecent of the same color
+				
+				// checks adjacent vertecies for developments of color == color
+				if(state.board.verteces.vertex.( (@x == x1 && @y == y1) || (@x == x2 && @y == y2) ).development.(@color == color).length() > 0) {
+					return true;
+				}
+					
+				if(state.board.edges.edge.( 
+						(@x1 == x1 && @y1 == y1) || (@x2 == x1 && @y2 == y1) || 
+						(@x1 == x2 && @y1 == y2) || (@x2 == x2 && @y2 == y2)
+					).development.(@color == color).length() > 0) {
+					return true;
+				}
+					
+				return false;
+			}
 			function adjacentVertexFromPoly(x, y) {
 				var corners = polyCorners(x, y);
 				
@@ -648,6 +665,22 @@
 					<param name="origin" expr="_eventdata" />
 				</game:sendInternalEvent>
 			</transition>
+			
+			<transition event="board.edgeClick" cond="!isCurrentPlayer(_eventdata.gns::player.text())">
+			    <game:error message="You are not the current player" />
+			</transition>
+			<transition event="board.edgeClick" cond="!findEdge(_eventdata.edge.@x1, _eventdata.edge.@y1, _eventdata.edge.@x2, _eventdata.edge.@y2)">
+				<game:error messageExpr="'Edge (' + _eventdata.edge.@x1 + ',' + _eventdata.edge.@y1 + ',' + _eventdata.edge.@x2 + ',' + _eventdata.edge.@y2 + ') does not exist'" />
+			</transition>
+			<transition event="board.edgeClick" cond="findEdge(_eventdata.edge.@x1, _eventdata.edge.@y1, _eventdata.edge.@x2, _eventdata.edge.@y2).development.length() != 0">
+				<game:error messageExpr="'Edge (' + _eventdata.edge.@x1 + ',' + _eventdata.edge.@y1 + ',' + _eventdata.edge.@x2 + ',' + _eventdata.edge.@y2 + ') already has a road'" />
+			</transition>
+			<transition event="board.edgeClick" cond="!isValidRoadPlacement(state.board.players.player[state.board.currentPlayer].color, _eventdata.edge.@x1, _eventdata.edge.@y1, _eventdata.edge.@x2, _eventdata.edge.@y2)">
+			    <game:error message="This is not a valid road placement." />
+			</transition>
+			
+			
+			    
 			
 			<transition event="board.placeSettlement" cond="hasAdjacentDevelopment(_eventdata.vertex.@x, _eventdata.vertex.@y)">
 				<game:error messageExpr="'Vertex (' + _eventdata.vertex.@x + ',' + _eventdata.vertex.@y + ') has an adjacent development'" />	
