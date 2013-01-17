@@ -133,8 +133,8 @@
 				pd.@count -= 1;
 			}
 			function placeEdgeDevelopment(dev, col, x1, y1, x2, y2) {
-				log.info("placing development: " + dev + "-" + col.text() + " " + x1 + "," + y1 + "," + x2 + "," + y2);
-				var p = state.board.players.player.(color == col)[0];
+				log.info("placing development: " + dev + "-" + col + " " + x1 + "," + y1 + "," + x2 + "," + y2);
+				var p = state.board.players.player.(color.text() == col)[0];
 				var pd = p.development.(@type == dev)[0];
 				var e = state.board.edges.edge.(@x1==x1 && @y1==y1 && @x2==x2 && @y2==y2)[0];
 				
@@ -147,10 +147,14 @@
 			function isValidRoadPlacement(color, x1, y1, x2, y2) {
 				// valid roads must have a settlement, city or road adjecent of the same color
 				
+				//log.info("checking valid road placement: " + color + ": " + x1 + ", " + y1 + ", " + x2 + ", " + y2);
+				
 				// checks adjacent vertecies for developments of color == color
 				if(state.board.verteces.vertex.( (@x == x1 && @y == y1) || (@x == x2 && @y == y2) ).development.(@color == color).length() > 0) {
 					return true;
 				}
+				
+				//log.info("found: " + state.board.edges.edge.(@x2 == x1 && @y2 == y1).development.(@color == color.toString()).toXMLString());
 					
 				if(state.board.edges.edge.( 
 						(@x1 == x1 && @y1 == y1) || (@x2 == x1 && @y2 == y1) || 
@@ -242,6 +246,9 @@
 				return ret;
 			}
 			function checkPlayerResourcesAgainstCost(player, costStr) {
+				log.info("checking player: " + player.color + " against cost " + costStr);
+				log.info("player: " + player.toXMLString());
+			
 				var cost = parseCost(costStr);
 				
 				var ret = true;
@@ -258,7 +265,9 @@
 				return ret;
 			}
 			function debitPlayerResourcesByCost(player, costStr) {				
-				var cost = util.parseCost(costStr);
+				var cost = parseCost(costStr);
+				
+				log.info("debitting player: " + player.toXMLString());
 				
 				for(var i = 0; i < cost.length; i++) {
 					var c = cost[i];
@@ -519,7 +528,7 @@
 					delete state.board.currentVertex;
 					var player = state.board.players.player[state.board.currentPlayer];
 					
-					placeEdgeDevelopment("road", player.color, _eventdata.edge.@x1, _eventdata.edge.@y1, _eventdata.edge.@x2, _eventdata.edge.@y2);
+					placeEdgeDevelopment("road", player.color.text(), _eventdata.edge.@x1, _eventdata.edge.@y1, _eventdata.edge.@x2, _eventdata.edge.@y2);
 					
 				]]></script>
 				<game:sendWatcherEvent event="'placeEdgeDevelopment'" keyExpr="_eventdata.edge.@x1 + ',' + _eventdata.edge.@y1 + ',' + _eventdata.edge.@x2 + ',' + _eventdata.edge.@y2">
@@ -659,11 +668,14 @@
 				</game:sendInternalEvent>
 			</transition>
 			<transition event="board.vertexClick">
-				<game:sendInternalEvent event="'placeSettlement'">
+				<send 	event="'board.placeSettlement'"
+						targettype="'http://www.w3.org/TR/scxml/#SCXMLEventProcessor'"
+						target="'#_internal'"
+						id="'board.placeSettlement.send'">
 					<param name="player" expr="state.board.players.player[state.board.currentPlayer]" />
 					<param name="vertex" expr="findVertex(_eventdata.vertex.@x, _eventdata.vertex.@y)" />
 					<param name="origin" expr="_eventdata" />
-				</game:sendInternalEvent>
+				</send>
 			</transition>
 			
 			<transition event="board.edgeClick" cond="!isCurrentPlayer(_eventdata.gns::player.text())">
@@ -675,16 +687,18 @@
 			<transition event="board.edgeClick" cond="findEdge(_eventdata.edge.@x1, _eventdata.edge.@y1, _eventdata.edge.@x2, _eventdata.edge.@y2).development.length() != 0">
 				<game:error messageExpr="'Edge (' + _eventdata.edge.@x1 + ',' + _eventdata.edge.@y1 + ',' + _eventdata.edge.@x2 + ',' + _eventdata.edge.@y2 + ') already has a road'" />
 			</transition>
-			<transition event="board.edgeClick" cond="!isValidRoadPlacement(state.board.players.player[state.board.currentPlayer].color, _eventdata.edge.@x1, _eventdata.edge.@y1, _eventdata.edge.@x2, _eventdata.edge.@y2)">
+			<transition event="board.edgeClick" cond="!isValidRoadPlacement(state.board.players.player[state.board.currentPlayer].color.text(), _eventdata.edge.@x1, _eventdata.edge.@y1, _eventdata.edge.@x2, _eventdata.edge.@y2)">
 			    <game:error message="This is not a valid road placement." />
 			</transition>
-			<transition event="board.edgeClick" cond="!checkPlayerResourcesAgainstCost(_eventdata.player, state.board.developments.development.(@type == 'road').@cost)">
+			<transition event="board.edgeClick" cond="!checkPlayerResourcesAgainstCost(state.board.players.player[state.board.currentPlayer], state.board.developments.development.(@type == 'road').@cost)">
 				<game:error message="You do not have enough resources to build a road" />
 			</transition>
 			<transition event="board.edgeClick">
 			    <script><![CDATA[
-			        debitPlayerResourcesByCost(_eventdata.player, state.board.developments.development.(@type == 'city').@cost);
-					placeEdgeDevelopment("road", _eventdata.player.color, _eventdata.edge.@x1, _eventdata.edge.@y1, _eventdata.edge.@x2, , _eventdata.edge.@y2);
+			    	var player = state.board.players.player[state.board.currentPlayer];
+			    	
+			        debitPlayerResourcesByCost(player, state.board.developments.development.(@type == 'road').@cost);
+					placeEdgeDevelopment("road", player.color.text(), _eventdata.edge.@x1, _eventdata.edge.@y1, _eventdata.edge.@x2, _eventdata.edge.@y2);
 			    ]]></script>
 			    <game:sendWatcherEvent event="'placeEdgeDevelopment'" keyExpr="_eventdata.edge.@x1 + ',' + _eventdata.edge.@y1 + ',' + _eventdata.edge.@x2 + ',' + _eventdata.edge.@y2">
 					<param name="color" expr="player.color" />
@@ -706,7 +720,7 @@
 			</transition>
 			<transition event="board.placeSettlement">
 				<script><![CDATA[
-					log.info("placing settlement: " + _eventdata.toXMLString());
+					log.info("placing settlement");
 					debitPlayerResourcesByCost(_eventdata.player, state.board.developments.development.(@type == 'settlement').@cost);
 					placeVertexDevelopment("settlement", _eventdata.player.color, _eventdata.vertex.@x, _eventdata.vertex.@y);
 				]]></script>

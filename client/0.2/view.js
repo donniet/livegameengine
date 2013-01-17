@@ -340,7 +340,8 @@ function ViewConstructor() {
 	this.serverLoadTime_ = new Date();
 	this.events_ = new Object();
 	this.handlers_ = new Object();
-	this.handlersDict_ = new Object();
+	this.placeholders_ = new Object();
+	this.placeholdersDict_ = new Object();
 	this.eventEndpoint_ = null;
 	this.gameEventEndpoint_ = null;
 	this.gameViewNamespace_ = "";
@@ -386,24 +387,29 @@ ViewConstructor.prototype.registerEvents = function(arr) {
 		this.events_[e.id] = e;
 	}
 }
-ViewConstructor.prototype.registerEventHandlers = function(arr) {
+ViewConstructor.prototype.registerEventHandlerPlaceholder = function(arr) {
+	for(var i = 0; i < arr.length; i++) {
+		var h = arr[i];
+		//console.log("registering handler: " + h.event);
+		
+		if(typeof this.placeholders_[h.event] == "undefined") {
+			this.placeholders_[h.event] = new Array();
+			this.placeholdersDict_[h.event] = new Object();
+		}
+		
+		this.placeholders_[h.event].push(h);
+		if(typeof h.key == "string" && h.key != "")
+			this.placeholdersDict_[h.event][h.key] = h;
+	}
+}
+ViewContructor.prototype.registerEventHandler = function(arr) {
 	for(var i = 0; i < arr.length; i++) {
 		var h = arr[i];
 		
-		
-		
-		//console.log("registering handler: " + h.event);
-		
-		if(typeof this.handlers_[h.event] == "undefined") {
-			this.handlers_[h.event] = new Array();
-			this.handlersDict_[h.event] = new Object();
-		}
-		
-		this.handlers_[h.event].push(h);
-		if(typeof h.key == "string" && h.key != "")
-			this.handlersDict_[h.event][h.key] = h;
+		this.handler_[h.event] = h;
 	}
 }
+
 ViewConstructor.prototype.handleGameViewElement = function(parent, node) {
 	switch(node.localName) {
 	case "event":
@@ -411,6 +417,9 @@ ViewConstructor.prototype.handleGameViewElement = function(parent, node) {
 		break;
 	case "eventHandler":
 		this.handleGameViewEventHandlerElement(parent, node);
+		break;
+	case "eventHandlerPlaceholder":
+		this.handleGameViewEventHandlerPlaceholder(parent, node);
 		break;
 	case "errorDisplay":
 		this.errorDisplay_ = new ErrorDisplay(node);
@@ -470,7 +479,15 @@ ViewConstructor.prototype.handleGameViewEventElement = function(parent, node) {
 	}, this);
 	
 }
-ViewConstructor.prototype.handleGameViewEventHandlerElement = function(parent, node) {
+ViewConstructor.prototype.handleGameViewEventHandler = function(parent, node) {
+	var h = {
+		"event": node.attributes["event"] ? node.attributes["event"].nodeValue : "",
+		"keyPattern": node.attributes["keyPattern"] ? node.attributes["keyPattern"].nodeValue : ""
+	};
+	
+	this.registerEventHandler([h]);
+}
+ViewConstructor.prototype.handleGameViewEventHandlerPlaceholder = function(parent, node) {
 	var h = {
 		"mode": node.attributes["mode"] ? node.attributes["mode"].nodeValue : "",
 		"event": node.attributes["event"] ? node.attributes["event"].nodeValue : "",
@@ -502,7 +519,7 @@ ViewConstructor.prototype.handleGameViewEventHandlerElement = function(parent, n
 		else return 0;
 	});
 	
-	this.registerEventHandlers([h]);
+	this.registerEventHandlerPlaceholder([h]);
 }
 ViewConstructor.prototype.parseDocumentBody = function(node) {
 	if(!node) return;
@@ -577,6 +594,9 @@ ViewConstructor.prototype.handleClientMessage = function(clientMessage) {
 	if(!clientMessage) return;
 	
 	console.log("clientMessage event: " + clientMessage.event);
+	
+	// first check the registered event handlers
+	
 	
 	if(typeof clientMessage.params["key"] == "string" && clientMessage.params["key"] != "") {
 		var key = clientMessage.params["key"];

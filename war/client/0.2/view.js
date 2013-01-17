@@ -390,6 +390,8 @@ ViewConstructor.prototype.registerEventHandlers = function(arr) {
 	for(var i = 0; i < arr.length; i++) {
 		var h = arr[i];
 		
+		
+		
 		//console.log("registering handler: " + h.event);
 		
 		if(typeof this.handlers_[h.event] == "undefined") {
@@ -475,7 +477,8 @@ ViewConstructor.prototype.handleGameViewEventHandlerElement = function(parent, n
 		"key": node.attributes["key"] ? node.attributes["key"].nodeValue : "",
 		"condition": node.attributes["condition"] ? node.attributes["condition"].nodeValue : "",
 		"content": parent,
-		"attributes": new Array()
+		"attributes": new Array(),
+		"params": new Array()
 	};
 	
 	forChildNodes(node, {
@@ -484,8 +487,20 @@ ViewConstructor.prototype.handleGameViewEventHandlerElement = function(parent, n
 				name: attributeNode.getAttribute("name"),
 				value: nodeText(attributeNode)
 			});
+		},
+		"param": function(paramNode) {
+			h.params.push({
+				name: paramNode.getAttribute("name"),
+				value: nodeText(paramNode)
+			});
 		}
 	}, this);
+	
+	h.params.sort(function(a,b) {
+		if(a.name < b.name) return -1;
+		else if(a.name > b.name) return 1;
+		else return 0;
+	});
 	
 	this.registerEventHandlers([h]);
 }

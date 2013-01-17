@@ -435,6 +435,8 @@ function enableBoardPanZoom(board, boardContainer) {
 			</head>
 			
 			<body>
+				<view:eventHandlerTemplate event="board.placeVertexDevelopment" keyPattern="{x1},{y1}" />
+			
 				<input value="Join" type="button">
 					<view:event gameEvent="join" on="click" />
 				</input>
