@@ -678,7 +678,23 @@
 			<transition event="board.edgeClick" cond="!isValidRoadPlacement(state.board.players.player[state.board.currentPlayer].color, _eventdata.edge.@x1, _eventdata.edge.@y1, _eventdata.edge.@x2, _eventdata.edge.@y2)">
 			    <game:error message="This is not a valid road placement." />
 			</transition>
-			
+			<transition event="board.edgeClick" cond="!checkPlayerResourcesAgainstCost(_eventdata.player, state.board.developments.development.(@type == 'road').@cost)">
+				<game:error message="You do not have enough resources to build a road" />
+			</transition>
+			<transition event="board.edgeClick">
+			    <script><![CDATA[
+			        debitPlayerResourcesByCost(_eventdata.player, state.board.developments.development.(@type == 'city').@cost);
+					placeEdgeDevelopment("road", _eventdata.player.color, _eventdata.edge.@x1, _eventdata.edge.@y1, _eventdata.edge.@x2, , _eventdata.edge.@y2);
+			    ]]></script>
+			    <game:sendWatcherEvent event="'placeEdgeDevelopment'" keyExpr="_eventdata.edge.@x1 + ',' + _eventdata.edge.@y1 + ',' + _eventdata.edge.@x2 + ',' + _eventdata.edge.@y2">
+					<param name="color" expr="player.color" />
+					<param name="x1" expr="_eventdata.edge.@x1" />
+					<param name="y1" expr="_eventdata.edge.@y1" />
+					<param name="x2" expr="_eventdata.edge.@x2" />
+					<param name="y2" expr="_eventdata.edge.@y2" />
+					<param name="type" expr="'road'" />
+				</game:sendWatcherEvent>
+			</transition>
 			
 			    
 			
@@ -713,11 +729,11 @@
 				<game:error message="You do not have enough resources to upgrade this settlement to a city" />
 			</transition>
 			<transition event="board.developmentSelected" target="main.build">
-				<script>//<![CDATA[
+				<script><![CDATA[
 					debitPlayerResourcesByCost(_eventdata.player, state.board.developments.development.(@type == 'city').@cost);
 					delete _eventdata.vertex.development
 					placeVertexDevelopment("city", _eventdata.player.color,  _eventdata.vertex.@x, _eventdata.vertex.@y);
-				//]]></script>
+				]]></script>
 				<game:flagStateAsImportant important="true" />
 				<game:sendWatcherEvent event="'placeVertexDevelopment'">							
 					<param name="color" expr="state.board.players.player[state.board.currentPlayer].color.text()" />
