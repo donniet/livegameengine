@@ -402,11 +402,11 @@ ViewConstructor.prototype.registerEventHandlerPlaceholder = function(arr) {
 			this.placeholdersDict_[h.event][h.key] = h;
 	}
 }
-ViewContructor.prototype.registerEventHandler = function(arr) {
+ViewConstructor.prototype.registerEventHandler = function(arr) {
 	for(var i = 0; i < arr.length; i++) {
 		var h = arr[i];
 		
-		this.handler_[h.event] = h;
+		this.handlers_[h.event] = h;
 	}
 }
 
@@ -416,7 +416,7 @@ ViewConstructor.prototype.handleGameViewElement = function(parent, node) {
 		this.handleGameViewEventElement(parent, node);
 		break;
 	case "eventHandler":
-		this.handleGameViewEventHandlerElement(parent, node);
+		this.handleGameViewEventHandler(parent, node);
 		break;
 	case "eventHandlerPlaceholder":
 		this.handleGameViewEventHandlerPlaceholder(parent, node);
@@ -588,6 +588,24 @@ ViewConstructor.prototype.parseMessageResponse = function(parent, messageContent
 		}	
 	}
 }
+ViewConstructor.prototype.renderEventPlaceholder = function(clientMessage, placeholder) {
+	if(placeholder.content) {	
+		if(placeholder.mode == "attribute") {
+			for(var j = 0; j < placeholder.attributes.length; j++) {
+				var a = placeholder.attributes[j];
+				placeholder.content.setAttribute(a.name, a.value);
+			}
+		}
+		else {
+			if(placeholder.mode == "replace") {
+				emptyNode(placeholder.content);
+			}
+			for(var j = 0; j < clientMessage.content.childNodes.length; j++) {
+				this.parseMessageResponse(placeholder.content, clientMessage.content.childNodes[j]);
+			}
+		}
+	}
+}
 ViewConstructor.prototype.handleClientMessage = function(clientMessage) {
 	//console.log("handling client message: " + clientMessage);
 	
@@ -596,51 +614,33 @@ ViewConstructor.prototype.handleClientMessage = function(clientMessage) {
 	console.log("clientMessage event: " + clientMessage.event);
 	
 	// first check the registered event handlers
-	
-	
-	if(typeof clientMessage.params["key"] == "string" && clientMessage.params["key"] != "") {
-		var key = clientMessage.params["key"];
+	var h = this.handlers_[clientMessage.event];
+	if(typeof h != "undefined" && h.keyPattern != "") {
+		var key = replacePattern(h.keyPattern, clientMessage.params);
 		
-		console.log("clientMessage key: " + key);
-		
-		var handlersDict = this.handlersDict_[clientMessage.event];
-		if(handlersDict && typeof handlersDict[key] == "object") {
-			var h = handlersDict[key];
-
-			if(h.content) {	
-				if(h.mode == "attribute") {
-					for(var j = 0; j < h.attributes.length; j++) {
-						var a = h.attributes[j];
-						h.content.setAttribute(a.name, a.value);
-					}
-				}
-				else {
-					if(h.mode == "replace") {
-						emptyNode(h.content);
-					}
-					for(var j = 0; j < clientMessage.content.childNodes.length; j++) {
-						this.parseMessageResponse(h.content, clientMessage.content.childNodes[j]);
-					}
-				}
-			}
+		var placeholderDict = this.placeholdersDict_[clientMessage.event];
+		if(placeholderDict && typeof placeholderDict[key] != "undefined") {
+			var p = placeholderDict[key];
+			
+			this.renderEventPlaceholder(clientMessage, p);
 		}
 	}
 	else {
-		var handlers = this.handlers_[clientMessage.event];
+		var placeholders = this.placeholders_[clientMessage.event];
 		
-		console.log("handler: " + (handlers ? handlers.toString() : "null"));
+		console.log("placeholder: " + (placeholders ? placeholders.toString() : "null"));
 			
-		if(handlers && handlers.length > 0) {
-			for(var i = 0; i < handlers.length; i++) {
-				var h = handlers[i];
-				console.log("checking handler number: " + i + ": " + h.condition);
+		if(placeholders && placeholders.length > 0) {
+			for(var i = 0; i < placeholders.length; i++) {
+				var p = placeholders[i];
+				console.log("checking handler number: " + i + ": " + p.condition);
 				
-				if(h.condition != "") {
-					console.log("condition: " + h.condition);
+				if(p.condition != "") {
+					console.log("condition: " + p.condition);
 					var r = false;
 					with(clientMessage) {
 						try {
-							r = eval(h.condition);
+							r = eval(p.condition);
 						}
 						catch(e) {
 							console.log("condition error: " + e);
@@ -674,25 +674,8 @@ ViewConstructor.prototype.handleClientMessage = function(clientMessage) {
 						continue;
 					}
 				}
-				
-				//console.log("found a handler: " + h);
-				
-				if(!h.content) continue;
-				
-				if(h.mode == "attribute") {
-					for(var j = 0; j < h.attributes.length; j++) {
-						var a = h.attributes[j];
-						h.content.setAttribute(a.name, a.value);
-					}
-				}
-				else {
-					if(h.mode == "replace") {
-						emptyNode(h.content);
-					}
-					for(var j = 0; j < clientMessage.content.childNodes.length; j++) {
-						this.parseMessageResponse(h.content, clientMessage.content.childNodes[j]);
-					}
-				}
+
+				this.renderEventPlaceholder(clientMessage, p);
 			}
 		}
 	}

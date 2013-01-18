@@ -435,7 +435,8 @@ function enableBoardPanZoom(board, boardContainer) {
 			</head>
 			
 			<body>
-				<view:eventHandlerTemplate event="board.placeVertexDevelopment" keyPattern="{x1},{y1}" />
+				<view:eventHandler event="board.placeVertexDevelopment" keyPattern="{{x}},{{y}}" />
+				<view:eventHandler event="board.placeEdgeDevelopment" keyPattern="{{x1}},{{y1}},{{x2}},{{y2}}" />
 			
 				<input value="Join" type="button">
 					<view:event gameEvent="join" on="click" />
@@ -468,20 +469,20 @@ function enableBoardPanZoom(board, boardContainer) {
 						</xsl:otherwise>
 					</xsl:choose>
 					
-					<view:eventHandler event="board.diceRolled" mode="replace" />
+					<view:eventHandlerPlaceholder event="board.diceRolled" mode="replace" />
 				</div>
 				
 				<div id="playersDiv">
 					<xsl:apply-templates select="$meta-doc//game:players" />
 					
-					<view:eventHandler event="game.playerJoin" mode="replace" />
+					<view:eventHandlerPlaceholder event="game.playerJoin" mode="replace" />
 				</div>
 								
 				<div id="boardDiv">
 					<svg:svg id="boardSvg" width="100%" height="100%" baseProfile="full" version="1.1">
 						<xsl:call-template name="board" />
 				
-						<view:eventHandler event="game.startGame" mode="replace" />
+						<view:eventHandlerPlaceholder event="game.startGame" mode="replace" />
 					</svg:svg>
 				</div>
 			</body>
@@ -718,7 +719,7 @@ function enableBoardPanZoom(board, boardContainer) {
 		<svg:g class="development-container">
 			<xsl:apply-templates select="pil:development" />
 			
-			<view:eventHandler event="board.placeVertexDevelopment" mode="replace" key="{@x},{@y}" />
+			<view:eventHandlerPlaceholder event="board.placeVertexDevelopment" mode="replace" key="{@x},{@y}" />
 		</svg:g>
 		
 		<svg:g>
@@ -791,7 +792,7 @@ function enableBoardPanZoom(board, boardContainer) {
 		<svg:g class="development-container">
 			<xsl:apply-templates select="pil:development" />
 			
-			<view:eventHandler event="board.placeEdgeDevelopment" mode="replace" key="{@x1},{@y1},{@x2},{@y2}" />
+			<view:eventHandlerPlaceholder event="board.placeEdgeDevelopment" mode="replace" key="{@x1},{@y1},{@x2},{@y2}" />
 		</svg:g>
 		
 		<svg:g>

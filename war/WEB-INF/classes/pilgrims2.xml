@@ -700,7 +700,7 @@
 			        debitPlayerResourcesByCost(player, state.board.developments.development.(@type == 'road').@cost);
 					placeEdgeDevelopment("road", player.color.text(), _eventdata.edge.@x1, _eventdata.edge.@y1, _eventdata.edge.@x2, _eventdata.edge.@y2);
 			    ]]></script>
-			    <game:sendWatcherEvent event="'placeEdgeDevelopment'" keyExpr="_eventdata.edge.@x1 + ',' + _eventdata.edge.@y1 + ',' + _eventdata.edge.@x2 + ',' + _eventdata.edge.@y2">
+			    <game:sendWatcherEvent event="'placeEdgeDevelopment'">
 					<param name="color" expr="player.color" />
 					<param name="x1" expr="_eventdata.edge.@x1" />
 					<param name="y1" expr="_eventdata.edge.@y1" />
