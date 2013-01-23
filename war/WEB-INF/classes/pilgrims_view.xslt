@@ -240,8 +240,37 @@
 				<script type="text/javascript" src="/client/0.2/transform2d.js"></script>
 				<script type="text/javascript"><![CDATA[
 
+function getCookie(c_name)
+{
+	var i,x,y,ARRcookies=document.cookie.split(";");
+	for (i=0;i<ARRcookies.length;i++) {
+		x=ARRcookies[i].substr(0,ARRcookies[i].indexOf("="));
+		y=ARRcookies[i].substr(ARRcookies[i].indexOf("=")+1);
+		x=x.replace(/^\s+|\s+$/g,"");
+		if (x==c_name) {
+			return unescape(y);
+		}
+	}
+}
+
+function setCookie(c_name,value,exdays)
+{
+	var exdate=new Date();
+	exdate.setDate(exdate.getDate() + exdays);
+	var c_value=escape(value) + ((exdays==null) ? "" : "; expires="+exdate.toUTCString());
+	document.cookie=c_name + "=" + c_value;
+}
+
+
 function enableBoardPanZoom(board, boardContainer) {
 	var trans = new Transform2d();	
+	
+	var t = getCookie("pilgrims-board-transform");
+	if(t) {
+		trans = Transform2d.fromJSON(t);
+		board.setAttribute("transform", trans.toSVG());
+		
+	}
 	
 	var blocker = document.createElement("div");
 	blocker.setAttribute("style", "position:absolute;top:0px;left:0px;height:100%;width:100%;");
@@ -259,7 +288,7 @@ function enableBoardPanZoom(board, boardContainer) {
 	
 	var mousemove = function(e) {
 		if(mousedown_) {
-			console.log("move(" + e.pageX + "," + e.pageY + ")");
+			//console.log("move(" + e.pageX + "," + e.pageY + ")");
 			move(e.pageX, e.pageY);	
 			
 			e.preventDefault();
@@ -278,7 +307,7 @@ function enableBoardPanZoom(board, boardContainer) {
 		}	
 	}
 	var mousedown = function(e) {
-		console.log("mousedown: " + e.which);
+		//console.log("mousedown: " + e.which);
 		
 		if(e.which == 2) {
 			mousedown_ = true;
@@ -294,6 +323,9 @@ function enableBoardPanZoom(board, boardContainer) {
 	
 	var stopmove = function() {
 		document.body.removeChild(blocker);
+		console.log(trans.toJSON());
+		
+		setCookie("pilgrims-board-transform", trans.toJSON(), 1);
 	}
 	var startmove = function(pageX, pageY) {
 		document.body.appendChild(blocker);
@@ -349,6 +381,7 @@ function enableBoardPanZoom(board, boardContainer) {
 		*/
 		
 		board.setAttribute("transform", trans.toSVG());
+		setCookie("pilgrims-board-transform", trans.toJSON(), 1);
 	}
 
 	var mousewheel = function(e) {
@@ -438,25 +471,12 @@ function enableBoardPanZoom(board, boardContainer) {
 				<view:eventHandler event="board.placeVertexDevelopment" keyPattern="{{x}},{{y}}" />
 				<view:eventHandler event="board.placeEdgeDevelopment" keyPattern="{{x1}},{{y1}},{{x2}},{{y2}}" />
 			
-				<input value="Join" type="button">
-					<view:event gameEvent="join" on="click" />
-				</input>
-				<input value="Start" type="button">
-					<view:event gameEvent="start" on="click" />
-				</input>
-				<input value="Roll" type="button">
-					<view:event on="click" event="diceClick" />
-				</input>
-				<input value="End Turn" type="button">
-					<view:event on="click" event="endTurn" />
-				</input>
 				
-				<span>
-					<view:errorDisplay />
+				<span id="error-display" class="hide-error">
+					<view:errorDisplay errorClassName="show-error" noErrorClassName="hide-error" />
 				</span>
 				
 				<div id="diceDiv">
-					
 					<xsl:choose>
 						<xsl:when test="count(pil:dice) = 0">
 							<div>
@@ -471,19 +491,36 @@ function enableBoardPanZoom(board, boardContainer) {
 					
 					<view:eventHandlerPlaceholder event="board.diceRolled" mode="replace" />
 				</div>
-				
-				<div id="playersDiv">
-					<xsl:apply-templates select="$meta-doc//game:players" />
-					
-					<view:eventHandlerPlaceholder event="game.playerJoin" mode="replace" />
-				</div>
-								
+												
 				<div id="boardDiv">
 					<svg:svg id="boardSvg" width="100%" height="100%" baseProfile="full" version="1.1">
 						<xsl:call-template name="board" />
 				
 						<view:eventHandlerPlaceholder event="game.startGame" mode="replace" />
 					</svg:svg>
+				</div>
+				
+				<div id="hud">
+					<div id="controls">
+						<input value="Join" type="button">
+							<view:event gameEvent="join" on="click" />
+						</input>
+						<input value="Start" type="button">
+							<view:event gameEvent="start" on="click" />
+						</input>
+						<input value="Roll" type="button">
+							<view:event on="click" event="diceClick" />
+						</input>
+						<input value="End Turn" type="button">
+							<view:event on="click" event="endTurn" />
+						</input>
+					</div>
+					
+					<div id="playersDiv">
+						<xsl:apply-templates select="$meta-doc//game:players" />
+						
+						<view:eventHandlerPlaceholder event="game.playerJoin" mode="replace" />
+					</div>
 				</div>
 			</body>
 		</html>
@@ -931,6 +968,22 @@ function enableBoardPanZoom(board, boardContainer) {
 			font-family: "Fanwood";
 			src: url("/client/0.2/fonts/Fanwood.otf");
 		}
+		
+		#error-display {
+			position:absolute;
+			left:10%;
+			right:10%;
+			top:20px;
+			height:30px;
+			background:rgba(255,0,0,0.2);
+			text-align:center;
+		}
+		.hide-error {
+			display:none;
+		}
+		.show-error {
+			display:block;
+		}
 	
 		.hex {
 			fill:#F5F5FF;
@@ -1086,12 +1139,33 @@ function enableBoardPanZoom(board, boardContainer) {
 		}
 		
 		#boardDiv {
-			width:100%;
-			height:100%;
 			position:absolute;
 			top:0;
-			left:0;	
+			left:0;
+			right:0;
+			bottom:100px;
 			z-index: -100;
+		}
+		#hud {
+			position:absolute;
+			height:100px;
+			bottom:0;
+			left:0;
+			right:0;
+			border-top: solid 2px rgba(0,0,255,0.75);
+			background-color: rgba(0,0,255,0.2);
+		}
+		#controls {
+			position:absolute;
+			left: 0;
+			bottom: 0;
+			width: 75px;
+		}
+		#playersDiv {
+			position:absolute;
+			left:75px;
+			bottom: 0;
+			height: 100px;
 		}
 		/*
 		body {

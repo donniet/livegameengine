@@ -173,6 +173,23 @@ Transform2d.__mat2string = function(mat) {
 	}
 	return ret + ")";
 }
+Transform2d.prototype.toJSON = function() {
+	return JSON.stringify({mat_:this.mat_, inv_:this.inv_});
+}
+Transform2d.fromJSON = function(obj) {
+	if(typeof obj == "string") {
+		obj = JSON.parse(obj);
+	}
+	
+	var ret = new Transform2d();
+	
+	for(var i = 0; i < 9; i++) {
+		ret.mat_[i] = obj.mat_[i];
+		ret.inv_[i] = obj.inv_[i];
+	}
+	
+	return ret;
+}
 Transform2d.prototype.toString = function() {
 	return Transform2d.__mat2string(this.mat_);
 }

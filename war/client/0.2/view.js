@@ -303,6 +303,9 @@ ErrorDisplay.prototype.parse = function(node) {
 	
 	this.element = node.parentNode;
 	
+	this.errorClassName = node.attributes["errorClassName"] ? node.attributes["errorClassName"].nodeValue : null;
+	this.noErrorClassName = node.attributes["noErrorClassName"] ? node.attributes["noErrorClassName"].nodeValue : null;
+	
 	var timeoutAttr = node.attributes["timeout"];
 	var timeoutValue = this.timeout;
 	if(timeoutAttr) {
@@ -314,6 +317,10 @@ ErrorDisplay.prototype.parse = function(node) {
 }
 ErrorDisplay.prototype.clearError = function() {
 	emptyNode(this.element);
+	if(this.noErrorClassName != null) {
+		this.element.className = this.noErrorClassName;
+	}
+	Event.fire(this, "errorCleared", []);
 }
 ErrorDisplay.prototype.displayError = function(gameError) {
 	if(this.timeoutHandle_ != null) {
@@ -324,6 +331,10 @@ ErrorDisplay.prototype.displayError = function(gameError) {
 	this.clearError();
 	
 	this.element.appendChild(document.createTextNode(gameError.message));
+	if(this.errorClassName != null) {
+		this.element.className = this.errorClassName;
+	}
+	Event.fire(this, "errorShown", []);
 	
 	if(this.timeout > 0) {
 		var self = this;
