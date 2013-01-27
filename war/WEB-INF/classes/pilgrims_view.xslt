@@ -511,9 +511,6 @@ function enableBoardPanZoom(board, boardContainer) {
 						<input value="Start" type="button">
 							<view:event gameEvent="start" on="click" />
 						</input>
-						<input value="Roll" type="button">
-							<view:event on="click" event="diceClick" />
-						</input>
 						<input value="End Turn" type="button">
 							<view:event on="click" event="endTurn" />
 						</input>
