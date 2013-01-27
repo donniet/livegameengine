@@ -79,6 +79,9 @@ public class GameState implements Scriptable, XmlSerializable {
 	@Persistent
 	private Set<String> stateSet;
 	
+	@Persistent
+	private Set<String> validEvents;
+	
 	protected GameState(Game game) {
 		if(game.getKey() == null) {
 			throw new IllegalArgumentException("game not persisted");
@@ -87,6 +90,7 @@ public class GameState implements Scriptable, XmlSerializable {
 		stateDate = new Date();
 		datamodel = new ArrayList<GameStateData>();
 		stateSet = new HashSet<String>();
+		validEvents = new HashSet<String>();
 	}
 	public Key getKey() {
 		return key;
@@ -105,6 +109,9 @@ public class GameState implements Scriptable, XmlSerializable {
 	}
 	public Set<String> getStateSet() {
 		return stateSet;
+	}
+	public Set<String> getValidEvents() {
+		return validEvents;
 	}
 		
 	/*
@@ -223,6 +230,14 @@ public class GameState implements Scriptable, XmlSerializable {
 			writer.writeCharacters(state);
 			writer.writeEndElement();
 		}
+		writer.writeEndElement();
+		
+		writer.writeStartElement(ns, "validEvents");
+		for(String e : validEvents) {
+			writer.writeStartElement(ns, "event");
+			writer.writeCharacters(e);
+			writer.writeEndElement();
+		}		
 		writer.writeEndElement();
 		
 		writer.writeEndElement();

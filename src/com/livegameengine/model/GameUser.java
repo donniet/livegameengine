@@ -40,7 +40,7 @@ public class GameUser implements Scriptable, XmlSerializable {
 	private static final String NAMESPACE_PREFIX = "game";
 	
 	@NotPersistent
-	private Scriptable prototype_;
+	private Scriptable prototype_; 
 	
 	@NotPersistent
 	private Scriptable parent_;
@@ -50,7 +50,7 @@ public class GameUser implements Scriptable, XmlSerializable {
 	private Key key;
 		
 	@Persistent
-	private User user;
+	private User user; 
 	
 	@Persistent
 	private boolean connected;

@@ -303,7 +303,6 @@ public class Game implements Scriptable, EventDispatcher, SCXMLListener, XmlSeri
 		return os == ObjectState.PERSISTENT_CLEAN || os == ObjectState.PERSISTENT_NEW || os == ObjectState.HOLLOW_PERSISTENT_NONTRANSACTIONAL;
 	}
 	
-
 	public GameState persistGameState(boolean isImportant) {
 		//GameState.deleteOldStatesForGame(this);
 		PersistenceManager pmf = JDOHelper.getPersistenceManager(this);
@@ -318,9 +317,18 @@ public class Game implements Scriptable, EventDispatcher, SCXMLListener, XmlSeri
 		final GameState gs = new GameState(this);
 		
 		Set<State> s = exec.getCurrentStatus().getStates();
+		
 		for(State state : s) {
 			gs.getStateSet().add(state.getId());
+			
+			List<Transition> trans = state.getTransitionsList();
+			
+			for(Transition t : trans) {
+				gs.getValidEvents().add(t.getEvent());
+			}
 		}
+		
+		
 		gs.setStateDate(new Date());
 		gs.extractFrom(scxml.getDatamodel(), cxt);
 		gs.setImportant(isImportant_ || isImportant);

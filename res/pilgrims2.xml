@@ -767,6 +767,10 @@
 					
 					state.board.currentPlayer = (currentPlayer + 1) % state.board.players.player.length();
 				]]></script>
+				<game:sendWatcherEvent event="'currentPlayerChange'">							
+					<param name="currentPlayer" expr="state.board.currentPlayer" />
+					<param name="currentPlayerRole" expr="state.board.players.player[state.board.currentPlayer].color" />
+				</game:sendWatcherEvent>
 			</transition>
 		</state>
 	</state>

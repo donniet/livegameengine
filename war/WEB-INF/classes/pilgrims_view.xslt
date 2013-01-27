@@ -470,7 +470,6 @@ function enableBoardPanZoom(board, boardContainer) {
 			<body>
 				<view:eventHandler event="board.placeVertexDevelopment" keyPattern="{{x}},{{y}}" />
 				<view:eventHandler event="board.placeEdgeDevelopment" keyPattern="{{x1}},{{y1}},{{x2}},{{y2}}" />
-			
 				
 				<span id="error-display" class="hide-error">
 					<view:errorDisplay errorClassName="show-error" noErrorClassName="hide-error" />
@@ -480,8 +479,12 @@ function enableBoardPanZoom(board, boardContainer) {
 					<xsl:choose>
 						<xsl:when test="count(pil:dice) = 0">
 							<div>
-								<img src="/client/0.2/i/Dice-6.svg" width="50" height="50" />
-								<img src="/client/0.2/i/Dice-6.svg" width="50" height="50" />
+								<img src="/client/0.2/i/Dice-6.svg" width="50" height="50">
+									<view:event on="click" event="diceClick" />
+								</img>
+								<img src="/client/0.2/i/Dice-6.svg" width="50" height="50">
+									<view:event on="click" event="diceClick" />
+								</img>
 							</div>
 						</xsl:when>
 						<xsl:otherwise>
@@ -517,33 +520,57 @@ function enableBoardPanZoom(board, boardContainer) {
 					</div>
 					
 					<div id="playersDiv">
-						<xsl:apply-templates select="$meta-doc//game:players" />
+						<xsl:apply-templates select="pil:players" />
 						
 						<view:eventHandlerPlaceholder event="game.playerJoin" mode="replace" />
+						<view:eventHandlerPlaceholder event="board.resourcesDistributed" mode="replace" />
 					</div>
 				</div>
 			</body>
 		</html>
 	</xsl:template>
 	
-	<xsl:template match="game:players">
+	<xsl:template match="pil:players">
 		<ul>
-			<xsl:apply-templates select="game:player" />
+			<xsl:apply-templates select="pil:player" />
 		</ul>
 	</xsl:template>
 	
-	<xsl:template match="game:player">
-		<li><span><xsl:value-of select="game:role" /></span></li>
+	<xsl:template match="pil:player">
+		<xsl:variable name="color" select="pil:color" />
+		
+		<li>
+			<xsl:attribute name="class">
+				<xsl:text>player player-</xsl:text><xsl:value-of select="position()" /><xsl:text> </xsl:text><xsl:if test="../../pil:currentPlayer = position() - 1">current-player</xsl:if>
+			</xsl:attribute>
+			
+			<view:eventHandlerPlaceholder event="board.currentPlayerChange" />
+			
+			<img src="http://www.gravatar.com/avatar/{$meta-doc//game:player[game:role = $color]/game:gameUser/game:hashedEmail}.jpg?s=25&amp;d=mm" width="25" height="25" />
+			<span class="role-{$color}"><xsl:value-of select="$meta-doc//game:player[game:role = $color]/game:gameUser/game:nickname" /></span>
+			<ul class="resource-list">
+				<xsl:apply-templates select="pil:resources" />
+			</ul>
+		</li>
 	</xsl:template>
 	
-	<xsl:template match="/game:message[game:event = 'game.playerJoin']">
-		<xsl:apply-templates select="$meta-doc//game:players" />
+	<xsl:template match="pil:resources">
+		<xsl:for-each select="pil:resource">
+			<xsl:sort-by select="@type" />
+			<li class="resource resource-{@type}"><span><xsl:value-of select="@count" /></span></li>
+		</xsl:for-each>
+	</xsl:template>
+	
+	<xsl:template match="/game:message[game:event = 'game.playerJoin' or game:event = 'board.resourcesDistributed']">
+		<xsl:apply-templates select="$meta-doc//game:mostRecentState//pil:players" />
 	</xsl:template>
 	
 	<xsl:template match="pil:dice">
 		<div>
 			<xsl:for-each select="pil:die">
-				<img src="/client/0.2/i/Dice-{@value}.svg" width="50" height="50" />
+				<img src="/client/0.2/i/Dice-{@value}.svg" width="50" height="50">
+					<view:event on="click" event="diceClick" />
+				</img>
 			</xsl:for-each>
 		</div>	
 	</xsl:template>
@@ -1041,25 +1068,45 @@ function enableBoardPanZoom(board, boardContainer) {
 		    stroke:#DDCD2D;
 		    stroke-width:1;
 		}
+		.resource-Grain {
+			background-color: #FFEF4F;
+			color: black;
+		}
 		.Forest {
 		    fill:#00932C;
 		    stroke:#00710A;
 		    stroke-width:1;
+		}
+		.resource-Wood {
+			background-color: #00932C;
+			color: white;
 		}
 		.Pasture {
 		    fill:#BFE882;
 		    stroke:#9DC770;
 		    stroke-width:1;
 		}
+		.resource-Wool {
+			background-color: #BFE882;
+			color: black;
+		}
 		.Hills {
 		    fill:#B22222;
 		    stroke:#900000;
 		    stroke-width:1;
 		}
+		.resource-Brick {
+			background-color: #B22222;
+			color: white;
+		}
 		.Mountains {
 		    fill:#787887;
 		    stroke:#565665;
 		    stroke-width:1;
+		}
+		.resource-Ore {
+			background-color: #787887;
+			color: white;
 		}
 		.Desert {
 		    fill:#fafad2;
@@ -1122,10 +1169,16 @@ function enableBoardPanZoom(board, boardContainer) {
 			stroke: black;
 			stroke-width: 1px;
 		}
+		.role-red {
+			color: red;
+		}
 		.green {
 			fill: green;
 			stroke: black;
 			stroke-width: 1px;
+		}
+		.role-green {
+			color: green;
 		}
 		.blue {
 			fill: blue;
@@ -1137,6 +1190,65 @@ function enableBoardPanZoom(board, boardContainer) {
 			stroke: black;
 			stroke-width: 1px;
 		}
+		
+		#playersDiv > ul > li {
+			list-style-type: none;
+		}
+		
+		.player img {
+			vertical-align: middle;
+		}
+		
+		.player {
+			position:absolute;
+			top: 5px;
+			bottom: 0px;
+			width: 110px;
+			text-align: left;
+		}
+		.current-player {
+			background-color:rgba(255, 230, 90, 0.2);
+		}
+		
+		.player-1 {
+			left: 40px;
+		}
+		.player-2 {
+			left: 150px;
+		}
+		.player-3 {
+			left: 260px;
+		}
+		.player-4 {
+			left: 370px;
+		}
+		
+		#playersDiv {
+			font-family: Fanwood, Serif;
+		}
+		.role-red {
+			color: red;
+		}
+		
+		.resource-list {
+			padding: 0px;
+			margin: 5px;
+		}
+		
+		.resource-list > li {
+			list-style-type:none;
+			float: left;
+			
+			border: solid 1px black;
+			border-radius: 4px;
+			display:block;
+			width: 15px;
+			height: 22px;
+			text-align: center;
+			padding-top: 3px;
+			font-weight: bold;
+		}
+		
 		
 		#boardDiv {
 			position:absolute;
