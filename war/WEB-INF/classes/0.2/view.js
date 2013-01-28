@@ -649,7 +649,7 @@ ViewConstructor.prototype.handleClientMessage = function(clientMessage) {
 				if(p.condition != "") {
 					console.log("condition: " + p.condition);
 					var r = false;
-					with(clientMessage) {
+					with(clientMessage.params) {
 						try {
 							r = eval(p.condition);
 						}

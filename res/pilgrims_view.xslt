@@ -541,7 +541,15 @@ function enableBoardPanZoom(board, boardContainer) {
 				<xsl:text>player player-</xsl:text><xsl:value-of select="position()" /><xsl:text> </xsl:text><xsl:if test="../../pil:currentPlayer = position() - 1">current-player</xsl:if>
 			</xsl:attribute>
 			
-			<view:eventHandlerPlaceholder event="board.currentPlayerChange" />
+			<view:eventHandlerPlaceholder event="board.currentPlayerChange" mode="attribute"
+				condition="'{$color}' == currentPlayerRole">
+				<attribute name="class"><xsl:text>player player-</xsl:text><xsl:value-of select="position()" /><xsl:text> current-player</xsl:text></attribute>
+			</view:eventHandlerPlaceholder>
+			<view:eventHandlerPlaceholder event="board.currentPlayerChange" mode="attribute"
+				condition="'{$color}' != currentPlayerRole">
+				<attribute name="class"><xsl:text>player player-</xsl:text><xsl:value-of select="position()" /></attribute>
+			</view:eventHandlerPlaceholder>
+			
 			
 			<img src="http://www.gravatar.com/avatar/{$meta-doc//game:player[game:role = $color]/game:gameUser/game:hashedEmail}.jpg?s=25&amp;d=mm" width="25" height="25" />
 			<span class="role-{$color}"><xsl:value-of select="$meta-doc//game:player[game:role = $color]/game:gameUser/game:nickname" /></span>
