@@ -56,7 +56,10 @@ import com.livegameengine.scxml.js.JsContext;
 public class GameState implements Scriptable, XmlSerializable { 
 	private static final long serialVersionUID = 1;
 	
+	private static final Config config_ = Config.getInstance();
+	
 	@NotPersistent private Scriptable parent_, prototype_;
+	
 	
 	@PrimaryKey
 	@Persistent(valueStrategy = IdGeneratorStrategy.IDENTITY)
@@ -204,6 +207,20 @@ public class GameState implements Scriptable, XmlSerializable {
 	
 	@Override
 	public void delete(int arg0) {}
+	
+	Node getValidEventsNode() {
+		Document d = config_.newXmlDocument();
+		String ns = config_.getGameEngineNamespace();
+		
+		Node ret = d.createElementNS(ns, "validEvents");
+		for(String e : validEvents) {
+			Node v = d.createElementNS(ns, "event");
+			v.appendChild(d.createTextNode(e));
+			ret.appendChild(v);
+		}
+		
+		return ret;
+	}
 
 	@Override
 	public void serializeToXml(String elementName, XMLStreamWriter writer) throws XMLStreamException {

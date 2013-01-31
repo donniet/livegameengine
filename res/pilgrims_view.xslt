@@ -504,16 +504,10 @@ function enableBoardPanZoom(board, boardContainer) {
 				</div>
 				
 				<div id="hud">
-					<div id="controls">
-						<input value="Join" type="button">
-							<view:event gameEvent="join" on="click" />
-						</input>
-						<input value="Start" type="button">
-							<view:event gameEvent="start" on="click" />
-						</input>
-						<input value="End Turn" type="button">
-							<view:event on="click" event="endTurn" />
-						</input>
+					<div>
+						<xsl:apply-templates select="$meta-doc//game:mostRecentState/game:validEvents" />
+						
+						<view:eventHandlerPlaceholder event="game.validEventsChanged" mode="replace" />
 					</div>
 					
 					<div id="playersDiv">
@@ -525,6 +519,50 @@ function enableBoardPanZoom(board, boardContainer) {
 				</div>
 			</body>
 		</html>
+	</xsl:template>
+
+	<xsl:template match="game:validEvents/game:event[text() = 'game.playerJoin']">
+		<input value="Join" type="button">
+			<view:event gameEvent="join" on="click" />
+		</input>
+	</xsl:template>
+	<xsl:template match="game:validEvents/game:event[text() = 'game.startGame']">
+		<input value="Start" type="button">
+			<view:event gameEvent="start" on="click" />
+		</input>
+	</xsl:template>
+	<xsl:template match="game:validEvents/game:event[text() = 'board.endTurn']">
+		<input value="End Turn" type="button">
+			<view:event on="click" event="endTurn" />
+		</input>
+	</xsl:template>
+	<xsl:template match="game:validEvents/game:event[text() = 'board.diceClick']">
+		<input value="Roll" type="button">
+			<view:event on="click" event="diceClick" />
+		</input>
+	</xsl:template>
+	<xsl:template match="game:validEvents/game:event[text() = 'board.startTrade']">
+		<input value="Trade" type="button">
+			<view:event on="click" event="startTrade" />
+		</input>
+	</xsl:template>
+	<xsl:template match="game:validEvents/game:event[text() = 'board.endTrade']">
+		<input value="End Trade" type="button">
+			<view:event on="click" event="endTrade" />
+		</input>
+	</xsl:template>
+	
+	<xsl:template match="game:validEvents/game:event" priority="-100" />
+
+
+	<xsl:template match="game:validEvents">
+		<div id="controls">
+			<xsl:apply-templates />
+		</div>
+	</xsl:template>
+	
+	<xsl:template match="/game:message[game:event = 'game.validEventsChanged']">
+		<xsl:apply-templates select="game:content/game:validEvents" />
 	</xsl:template>
 	
 	<xsl:template match="pil:players">
@@ -543,11 +581,11 @@ function enableBoardPanZoom(board, boardContainer) {
 			
 			<view:eventHandlerPlaceholder event="board.currentPlayerChange" mode="attribute"
 				condition="'{$color}' == currentPlayerRole">
-				<attribute name="class"><xsl:text>player player-</xsl:text><xsl:value-of select="position()" /><xsl:text> current-player</xsl:text></attribute>
+				<view:attribute name="class"><xsl:text>player player-</xsl:text><xsl:value-of select="position()" /><xsl:text> current-player</xsl:text></view:attribute>
 			</view:eventHandlerPlaceholder>
 			<view:eventHandlerPlaceholder event="board.currentPlayerChange" mode="attribute"
 				condition="'{$color}' != currentPlayerRole">
-				<attribute name="class"><xsl:text>player player-</xsl:text><xsl:value-of select="position()" /></attribute>
+				<view:attribute name="class"><xsl:text>player player-</xsl:text><xsl:value-of select="position()" /></view:attribute>
 			</view:eventHandlerPlaceholder>
 			
 			
@@ -823,6 +861,11 @@ function enableBoardPanZoom(board, boardContainer) {
 			<xsl:when test="@type='city'">			
 				<xsl:variable name="x"><xsl:call-template name="cx"><xsl:with-param name="nx" select="../@x" /></xsl:call-template></xsl:variable>
 				<xsl:variable name="y"><xsl:call-template name="cy"><xsl:with-param name="ny" select="../@y" /></xsl:call-template></xsl:variable>
+				<svg:g transform="translate({$x - 25},{$y - 15})" class="development city {@color}">
+	                <svg:rect x="0" y="0" width="50" height="30" style="stroke: black;"/>
+	                <svg:line x1="15" y1="0" x2="15" y2="30" style="stroke:black;" />
+	                <svg:line x1="30" y1="0" x2="30" y2="30" style="stroke:black;" />
+            	</svg:g>
 			</xsl:when>
 			<xsl:when test="@type='robber'">
 			</xsl:when>

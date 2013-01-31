@@ -660,12 +660,12 @@
 				<game:error messageExpr="'Vertex (' + _eventdata.vertex.@x + ',' + _eventdata.vertex.@y + ') does not exist'" />
 			</transition>
 			<transition event="board.vertexClick" cond="findVertexDevelopments(_eventdata.vertex.@x, _eventdata.vertex.@y).length() &gt; 0">
-				<game:sendInternalEvent event="'developmentSelected'">
+				<send event="'board.developmentSelected'">
 					<param name="player" expr="state.board.players.player[state.board.currentPlayer]" />
 					<param name="vertex" expr="findVertex(_eventdata.vertex.@x, _eventdata.vertex.@y)" />
 					<param name="development" expr="findVertexDevelopments(_eventdata.vertex.@x, _eventdata.vertex.@y)[0]" />
 					<param name="origin" expr="_eventdata" />
-				</game:sendInternalEvent>
+				</send>
 			</transition>
 			<transition event="board.vertexClick">
 				<send 	event="'board.placeSettlement'"
@@ -708,6 +708,9 @@
 					<param name="y2" expr="_eventdata.edge.@y2" />
 					<param name="type" expr="'road'" />
 				</game:sendWatcherEvent>
+				<game:sendWatcherEvent event="'resourcesDistributed'">
+					<content expr="state.board.players[0]" />
+				</game:sendWatcherEvent>
 			</transition>
 			
 			    
@@ -726,15 +729,19 @@
 				]]></script>
 				<game:sendWatcherEvent event="'placeVertexDevelopment'">
 					<param name="color" expr="_eventdata.player.color.text()" />
-					<param name="x" expr="_eventdata.vertex.@x >>> 0" />
-					<param name="y" expr="_eventdata.vertex.@y >>> 0" />
+					<param name="x" expr="_eventdata.vertex.@x" />
+					<param name="y" expr="_eventdata.vertex.@y" />
 					<param name="type" expr="'settlement'" />
 					<content expr="_eventdata.player" />
 				</game:sendWatcherEvent>
+				<game:sendWatcherEvent event="'resourcesDistributed'">
+					<content expr="state.board.players[0]" />
+				</game:sendWatcherEvent>
+				
 			</transition>
 			
-			<transition event="board.developmentSelected" cond="_eventdata.development.@color != _eventdata.player.color">
-				<game:error message="This is not your development" />
+			<transition event="board.developmentSelected" cond="_eventdata.development.@color.toString() != _eventdata.player.color.toString()">
+				<game:error messageExpr="'This is not your development: ' + _eventdata.development.@color + ' != ' + _eventdata.player.color" />
 			</transition>
 			<transition event="board.developmentSelected" cond="_eventdata.development.@type != 'settlement'">
 				<game:error message="This development is not a settlement and cannot be upgraded" />
@@ -744,18 +751,22 @@
 			</transition>
 			<transition event="board.developmentSelected" target="main.build">
 				<script><![CDATA[
+					log.info("placing city");
 					debitPlayerResourcesByCost(_eventdata.player, state.board.developments.development.(@type == 'city').@cost);
 					delete _eventdata.vertex.development
 					placeVertexDevelopment("city", _eventdata.player.color,  _eventdata.vertex.@x, _eventdata.vertex.@y);
 				]]></script>
-				<game:flagStateAsImportant important="true" />
 				<game:sendWatcherEvent event="'placeVertexDevelopment'">							
 					<param name="color" expr="state.board.players.player[state.board.currentPlayer].color.text()" />
-					<param name="x" expr="_eventdata.vertex.@x >>> 0" />
-					<param name="y" expr="_eventdata.vertex.@y >>> 0" />
+					<param name="x" expr="_eventdata.vertex.@x" />
+					<param name="y" expr="_eventdata.vertex.@y" />
 					<param name="type" expr="'city'" />
 					<content expr="state.board.players.player[state.board.currentPlayer]" />
 				</game:sendWatcherEvent>
+				<game:sendWatcherEvent event="'resourcesDistributed'">
+					<content expr="state.board.players[0]" />
+				</game:sendWatcherEvent>
+				
 			</transition>
 			
 			<transition event="board.endTurn" cond="!isCurrentPlayer(_eventdata.gns::player.text())">
@@ -772,6 +783,23 @@
 					<param name="currentPlayerRole" expr="state.board.players.player[state.board.currentPlayer].color" />
 				</game:sendWatcherEvent>
 			</transition>
+			
+			<transition event="board.startTrade" target="main.trade" />
+		</state>
+		<state id="main.trade">
+			<onentry>
+				<script><![CDATA[
+					state.board.trade = <trade />;
+					
+				]]></script>
+			</onentry>
+			<transition event="board.endTrade" target="main.build" />
+			
+			<onexit>
+				<script><![CDATA[
+					delete state.board.trade;
+				]]></script>
+			</onexit>
 		</state>
 	</state>
 </scxml>

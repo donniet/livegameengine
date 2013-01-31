@@ -296,12 +296,13 @@ public class Game implements Scriptable, EventDispatcher, SCXMLListener, XmlSeri
 		isError_ = true;
 		errorMessage_ = "There was an error executing the game rules.";
 	}
-	
+	/*
 	public boolean getPersisted() {
 		ObjectState os = JDOHelper.getObjectState(this);
 		
 		return os == ObjectState.PERSISTENT_CLEAN || os == ObjectState.PERSISTENT_NEW || os == ObjectState.HOLLOW_PERSISTENT_NONTRANSACTIONAL;
 	}
+	*/
 	
 	public GameState persistGameState(boolean isImportant) {
 		//GameState.deleteOldStatesForGame(this);
@@ -333,15 +334,15 @@ public class Game implements Scriptable, EventDispatcher, SCXMLListener, XmlSeri
 		gs.extractFrom(scxml.getDatamodel(), cxt);
 		gs.setImportant(isImportant_ || isImportant);
 		
+		Node validEvents = gs.getValidEventsNode();
 		
+		ClientMessage m = new ClientMessage(this, "game.validEventsChanged", new HashMap<String,String>(), validEvents);
 		
-		GameState saved = null;
-		
-		saved = pmf.makePersistent(gs);
+		pmf.makePersistent(m);	
+		GameState saved = pmf.makePersistent(gs);
 		
 		this.setCurrentStateKey(saved.getKey());
 		pmf.makePersistent(this);
-		
 		
 		isDirty_ = false;
 		isError_ = false;
@@ -614,6 +615,7 @@ public class Game implements Scriptable, EventDispatcher, SCXMLListener, XmlSeri
 		currentUser_ = null;
 		
 		if(isDirty_ && !isError_) {
+			
 			persistGameState(true);
 			return true;
 		}
@@ -622,6 +624,33 @@ public class Game implements Scriptable, EventDispatcher, SCXMLListener, XmlSeri
 			return false;
 		}
 	}
+	public boolean triggerEvent(String eventid, Node node) {
+		boolean ret = true;
+		
+		isError_ = false;
+		
+		try {
+			getExec().triggerEvent(new TriggerEvent(eventid, TriggerEvent.SIGNAL_EVENT, node));
+		} catch (ModelException e) {
+			if(SystemProperty.environment.value() == SystemProperty.Environment.Value.Development)
+				e.printStackTrace();
+			return false;
+		}
+		
+		if(isDirty_ && !isError_) {
+			persistGameState(false);
+		}
+		else if(isError_) {
+			ret = false;
+		}
+		else if(!isDirty_) {
+			ret = false;
+			errorMessage_ = String.format("Event '%s' was not valid in the current state of the game.", eventid);
+		}
+		
+		return ret;
+	}
+	
 	
 	public boolean isError() {
 		return isError_;
@@ -706,6 +735,7 @@ public class Game implements Scriptable, EventDispatcher, SCXMLListener, XmlSeri
 			
 		}
 	}
+	/*
 	
 	public String[] getTransitionEvents() {
 		Set<String> ret = new HashSet<String>();
@@ -724,6 +754,7 @@ public class Game implements Scriptable, EventDispatcher, SCXMLListener, XmlSeri
 		
 		return ret.toArray(new String[0]);
 	}
+	*/
 	
 	public static Game findUninitializedGameByKey(final Key key) {
 		Game ret = null;
@@ -803,33 +834,6 @@ public class Game implements Scriptable, EventDispatcher, SCXMLListener, XmlSeri
 		
 		return p;
 	}
-
-	public boolean triggerEvent(String eventid, Node node) {
-		boolean ret = true;
-		
-		isError_ = false;
-		
-		try {
-			getExec().triggerEvent(new TriggerEvent(eventid, TriggerEvent.SIGNAL_EVENT, node));
-		} catch (ModelException e) {
-			if(SystemProperty.environment.value() == SystemProperty.Environment.Value.Development)
-				e.printStackTrace();
-			return false;
-		}
-		
-		if(isDirty_ && !isError_) {
-			persistGameState(false);
-		}
-		else if(isError_) {
-			ret = false;
-		}
-		else if(!isDirty_) {
-			ret = false;
-			errorMessage_ = String.format("Event '%s' was not valid in the current state of the game.", eventid);
-		}
-		
-		return ret;
-	}
 	public List<Watcher> getWatchers() {
 		return Watcher.findWatchersByGame(this);
 	}
@@ -894,7 +898,7 @@ public class Game implements Scriptable, EventDispatcher, SCXMLListener, XmlSeri
 	public void onTransition(TransitionTarget from, TransitionTarget to, Transition transition) {
 		getLog().info("OnTransition: " + from.getId() + " -> " + to.getId() + ": [" + transition.getEvent() + "]");
 		
-		isDirty_ = true;		
+		isDirty_ = true;	
 	}
 	/* end transition events */
 

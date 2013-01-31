@@ -179,7 +179,7 @@ function ClientMessageChannel(messagesUrl, since) {
 	this.requestInProgress = false;
 	this.since = since;
 	
-	this.intervalTime = 2000;
+	this.intervalTime = 1000;
 	
 	// add a millisecond buffer on all latest messages
 	this.messageDelta = 1;
